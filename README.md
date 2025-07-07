@@ -44,6 +44,22 @@ The `.xlsx` sould contain the following columns:
 - **`warm`**: labled either 1 if the group of interst is described as warm or 0 if not
 - **`cold`**: labled either 1 if the group of interst is described as cold or 0 if not 
 
+### Environment Variables#
+
+Setup the following environment variables in `.env` file at the root of the repository.
+
+1. Huggingface Repository
+
+```
+HUGGING_FACE_BERT_MODEL_REPRO=<hugging-face-user-name/model-repository-name>
+```
+
+2. Huggingface Access Token
+
+```
+HUGGING_FACE_TOKEN=<your-huggingface-access-token>
+```
+
 # Usage
 ## Finetune BERT Model
 
