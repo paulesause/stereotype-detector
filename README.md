@@ -37,8 +37,8 @@ pip install -e .
 ```
 ### Data
 
-Place a `.xlsx` file with your labled data in the `data` folder.
-The `xlsx` sould contain the following columns:
+Create a `data` folder in the root of the repository. Place a `.xlsx` file with your labled data in this `data` folder.
+The `.xlsx` sould contain the following columns:
 
 - **`text_block`**: Containing the new acticle paragraphs
 - **`warm`**: labled either 1 if the group of interst is described as warm or 0 if not
