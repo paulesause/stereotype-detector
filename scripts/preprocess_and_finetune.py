@@ -5,14 +5,15 @@ import evaluate
 from racism_classifier.utils import load_data, get_huggingface_repro, get_huggingface_token
 from racism_classifier.preprocessing import rescale_warm_hot_dimension, tokenize
 from racism_classifier.evaluation import compute_evaluation_metrics
+from racism_classifier.logger.metrics_logger import JsonlMetricsLoggerCallback
 from racism_classifier.config import BERT_MODEL_NAME, MODEL_DIR_PATH, LABEL_COLUMN_NAME, DATA_PATH, ID2LABEL_MAP, LABEL2ID_MAP
-import numpy as np
 
 
 # ---------------------------------------------------------------------------------------------
 # Logins
 # ---------------------------------------------------------------------------------------------
 
+# Huggingface login
 hugging_face_token = get_huggingface_token()
 login(token=hugging_face_token)
 
@@ -42,14 +43,15 @@ tokenized_icr_data = train_test_icr_data.map(tokenize(tokenizer),
                                              batch_size=8,
                                              remove_columns=columns_to_remove)
 
-# small subset for testing
-small_train = tokenized_icr_data["train"].shuffle(seed=42).select(range(20))
-small_test = tokenized_icr_data["test"].shuffle(seed=42).select(range(20))
+# -------------------------------------------------------------------------------------------
+# Fine-Tuning
+# -------------------------------------------------------------------------------------------
 
+# small subset for testing
+small_train = tokenized_icr_data["train"].shuffle(seed=42).select(range(10))
+small_test = tokenized_icr_data["test"].shuffle(seed=42).select(range(10))
 
 data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
-
-accuracy = evaluate.load("accuracy")
 
 model = AutoModelForSequenceClassification.from_pretrained(
     BERT_MODEL_NAME, num_labels=4, id2label=ID2LABEL_MAP, label2id=LABEL2ID_MAP
@@ -59,11 +61,14 @@ model = AutoModelForSequenceClassification.from_pretrained(
 training_args = TrainingArguments(
     output_dir=MODEL_DIR_PATH,
 
-    per_device_train_batch_size=8,
-    per_device_eval_batch_size=8,
+    per_device_train_batch_size=4,
+    per_device_eval_batch_size=4,
     num_train_epochs=1,
+    
     save_strategy="epoch",
     eval_strategy="epoch",
+    logging_strategy="epoch",
+    
     push_to_hub=True,
     hub_model_id=get_huggingface_repro(),
     logging_dir="logs",
@@ -77,9 +82,10 @@ trainer = Trainer(
     tokenizer=tokenizer,
     data_collator=data_collator,
     compute_metrics=compute_evaluation_metrics,
+    callbacks=[JsonlMetricsLoggerCallback()]
 )
 
 trainer.train()
-trainer.evaluate()
+metrics = trainer.evaluate()
 trainer.push_to_hub()
 

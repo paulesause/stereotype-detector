@@ -12,6 +12,7 @@ git clone https://github.com/paulesause/racism_classifier
 ```
 
 ### Install Dependencies
+
 1. Create virtualenvironment
 
 ```bash
