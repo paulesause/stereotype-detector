@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "racism_classifier"
+version = "0.1.1"
+description = "Classifies racism in text data"
+authors = [
+    { name = "Your Name", email = "you@example.com" }
+]
+dependencies = []
+[tool.setuptools.packages.find]
+where = ["."]
+
+[project.scripts]
+text2bpmn = "text2bpmn.__main__:main"
