@@ -44,7 +44,7 @@ The `.xlsx` sould contain the following columns:
 - **`warm`**: labled either 1 if the group of interst is described as warm or 0 if not
 - **`cold`**: labled either 1 if the group of interst is described as cold or 0 if not 
 
-### Environment Variables#
+### Environment Variables
 
 Setup the following environment variables in `.env` file at the root of the repository.
 
