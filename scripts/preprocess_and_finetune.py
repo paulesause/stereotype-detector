@@ -4,14 +4,14 @@ from transformers import DataCollatorWithPadding
 import evaluate
 from racism_classifier.utils import load_data
 from racism_classifier.preprocessing import rescale_warm_hot_dimension, tokenize
-from racism_classifier.config import BERT_MODEL_NAME, MODEL_DIR_PATH, LABEL_COLUMN_NAME
+from racism_classifier.config import BERT_MODEL_NAME, MODEL_DIR_PATH, LABEL_COLUMN_NAME, DATA_PATH
 import numpy as np
 
 # ----------------------------------------------------------------------------------------------
 # Data loding
 # ---------------------------------------------------------------------------------------------
 
-icr_data = load_data("data/ICR_sample.xlsx")
+icr_data = load_data(DATA_PATH)
 
 # -----------------------------------------------------------------------------------------------
 # Preprocessing

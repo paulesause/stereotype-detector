@@ -9,3 +9,4 @@ PAR_INDEX_NAME = "par_index"
 LABEL_COLUMN_NAME = "labels" # Do not change this name. Tranformers excpect them column with the labels named "labels"
 
 MODEL_DIR_PATH = "models"
+DATA_PATH = "data/ICR_sample.xlsx"
