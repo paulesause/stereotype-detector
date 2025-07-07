@@ -1,7 +1,5 @@
 import numpy as np
-from transformers import AutoTokenizer
-from racism_classifier.config import TEXT_COLUMN_NAME, BERT_MODEL_NAME, COLD_COLUMN_NAME, WARM_COLUMN_NAME, LABEL_COLUMN_NAME
-
+from racism_classifier.config import TEXT_COLUMN_NAME, COLD_COLUMN_NAME, WARM_COLUMN_NAME, LABEL_COLUMN_NAME
 
 def rescale_warm_hot_dimension(batch):
     """Rescale the Hot-Warm Dimensions to a singular scale.
@@ -19,8 +17,7 @@ def rescale_warm_hot_dimension(batch):
 
     return {LABEL_COLUMN_NAME: rescaled.tolist()}
 
-
-tokenizer = AutoTokenizer.from_pretrained(BERT_MODEL_NAME)
-
-def tokenize(batch):
-    return tokenizer(batch[TEXT_COLUMN_NAME], truncation=True)
+def tokenize(tokenizer):
+    def f(batch):
+        return tokenizer(batch[TEXT_COLUMN_NAME], truncation=True)
+    return f
