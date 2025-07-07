@@ -178,3 +178,10 @@ node_modules
 .vscode/
 package-lock.json
 package.json
+
+# Models
+models/
+
+# Data stuff
+*.xlsx
+*.csv
