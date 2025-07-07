@@ -1,0 +1,7 @@
+datasets==3.6.0
+transformers==4.53.1
+evaluate==0.4.4
+openpyxl==3.1.5
+scikit-learn==1.7.0
+torch==2.7.1
+accelerate==1.8.1
