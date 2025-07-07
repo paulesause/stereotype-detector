@@ -185,3 +185,4 @@ models/
 # Data stuff
 *.xlsx
 *.csv
+.~lock.*
