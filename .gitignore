@@ -188,3 +188,7 @@ models/
 *.csv
 .~lock.*
 paulesause/
+.tmp_results/
+
+# Loggings
+logs/

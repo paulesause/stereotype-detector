@@ -19,5 +19,17 @@ ID2LABEL_MAP = {0: "cold = 0 AND warm = 0", 1: "cold = 1 AND warm = 0", 2: "cold
 LABEL2ID_MAP = {"cold = 0 AND warm = 0": 0, "cold = 1 AND warm = 0": 1, "cold = 0 AND warm = 1": 2, "cold = 1 AND warm = 1": 3}
 NUMBER_OF_LABELS = 4
 
+# Evaluation
+TEST_SPLIT_SIZE = 0.2
+
 # Hyperparamter Search
 NUMBER_OF_TRIALS = 2
+RANDOM_STATE=42
+NUMBER_CROSS_VALIDATION_FOLDS=3
+
+# Hyperparameter space
+HYPERPARAMETER_SPACE = {
+    "learning_rate": {"type": "float", "low": 1e-6, "high": 1e-4, "log": True},
+    "per_device_train_batch_size": {"type": "categorical", "choices": [1, 2, 3, 4]},
+    "num_train_epochs": {"type": "int", "low": 1, "high": 2}
+}

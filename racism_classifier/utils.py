@@ -1,7 +1,8 @@
 import pandas as pd
 from datasets import Dataset
-from racism_classifier.config import DATA_PATH
+from racism_classifier.config import DATA_PATH, MODEL_DIR_PATH, BERT_MODEL_NAME
 from transformers import AutoTokenizer
+from huggingface_hub import ModelCardData, ModelCard
 from dotenv import load_dotenv
 import os
 
@@ -41,3 +42,20 @@ def get_huggingface_token():
         _hugging_face_token = os.getenv("HUGGING_FACE_TOKEN")
     return _hugging_face_token
 
+# Model cart
+
+def create_model_card():
+    card_data = ModelCardData(language='en',
+                              base_model=BERT_MODEL_NAME,
+                              datasets="Dataset from Rainer"
+                              )
+
+    card = ModelCard.from_template(
+        card_data,
+        model_id='my-cool-model',
+        model_description="this model does this and that",
+        developers="Nate Raw",
+        repo="https://github.com/huggingface/huggingface_hub",
+    )
+    card.save(f'{MODEL_DIR_PATH}/README.md')
+    print(card)
