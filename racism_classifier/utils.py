@@ -40,3 +40,4 @@ def get_huggingface_token():
     if _hugging_face_token == None:
         _hugging_face_token = os.getenv("HUGGING_FACE_TOKEN")
     return _hugging_face_token
+

@@ -17,3 +17,7 @@ DATA_PATH = "data/ICR_sample.xlsx"
 # DATA Lables
 ID2LABEL_MAP = {0: "cold = 0 AND warm = 0", 1: "cold = 1 AND warm = 0", 2: "cold = 0 AND warm = 1", 3: "cold = 1 AND warm = 1"}
 LABEL2ID_MAP = {"cold = 0 AND warm = 0": 0, "cold = 1 AND warm = 0": 1, "cold = 0 AND warm = 1": 2, "cold = 1 AND warm = 1": 3}
+NUMBER_OF_LABELS = 4
+
+# Hyperparamter Search
+NUMBER_OF_TRIALS = 2
