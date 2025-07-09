@@ -32,7 +32,7 @@ def finetune(
 
     # ----------------------------------------------------------------------------------------------
     # Data loding
-    # ---------------------------------------------------------------------------------------------
+    # ----------------------------------------------------------------------------------------------
 
     if n_example_sample:
         data = data.shuffle(seed=RANDOM_STATE).select(range(n_example_sample))
@@ -184,7 +184,57 @@ def finetune(
             compute_metrics=compute_evaluation_metrics,
             callbacks=[JsonlMetricsLoggerCallback()]
         )
+    elif evaluation_mode == "nested_cv":
+        outer_k = 5
+        kf_outer = optuna.integration.KFold(n_splits=outer_k, shuffle=True, random_state=RANDOM_STATE)
+        all_outer_scores = []
+        for outer_train_index, outer_test_index in kf_outer.split(data["train"]):
+            outer_train_data = data["train"].select(outer_train_index)
+            outer_test_data = data["train"].select(outer_test_index)
 
+            # Inner CV for hyperparameter tuning
+            study = optuna.create_study(direction="maximize", study_name="BERT_nested_cross_validation")
+            study.optimize(make_objective_BERT_cross_validation(model, outer_train_data, tokenizer, data_collator), n_trials=NUMBER_OF_TRIALS)
+
+            best_params = study.best_params
+
+            # Train model with best params
+            training_args = TrainingArguments(
+            output_dir=output_dir,
+
+            per_device_train_batch_size=4,
+            per_device_eval_batch_size=4,
+            num_train_epochs=1,
+            
+            save_strategy="epoch",
+            eval_strategy="epoch",
+            logging_strategy="epoch",
+            
+            hub_model_id=hub_model_id,
+            logging_dir="logs",
+            hub_strategy="end",
+            hub_private_repo=True,
+            push_to_hub=True,
+
+            load_best_model_at_end=True,
+            save_total_limit=1
+        )
+
+            # Set training args to best found during hyperparameter search
+            for n, v in best_params.items():
+                setattr(training_args, n, v)
+
+            best_trainer = Trainer(
+            model=None,
+            args=training_args,
+            train_dataset=data["train"],
+            eval_dataset=data["test"],
+            tokenizer=tokenizer,
+            model_init=make_model_init(model),
+            data_collator=data_collator,
+            compute_metrics=compute_evaluation_metrics,
+            callbacks=[JsonlMetricsLoggerCallback()]
+        )
     else:
         raise ValueError("Unsupported evaluation_mode parameter. Chose either 'holdout' or 'cv'.")
     
@@ -202,4 +252,3 @@ def finetune(
     commit_message = f"End-training-{current_time}"
 
     best_trainer.push_to_hub(commit_message=commit_message)
-
