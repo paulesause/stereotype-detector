@@ -10,3 +10,4 @@ dotenv==0.9.9
 protobuf==6.31.1
 krippendorff==0.8.1
 tensorboard==2.19.0
+optuna==4.4.0

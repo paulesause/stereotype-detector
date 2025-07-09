@@ -20,4 +20,8 @@ def compute_evaluation_metrics(eval_pred):
 
 def krippendorff_alpha_score(labels, preds):
     reliability_data = np.vstack([labels, preds])
-    return krippendorff.alpha(reliability_data, level_of_measurement="nominal")
+    try:
+        return krippendorff.alpha(reliability_data, level_of_measurement="nominal")
+    except ValueError as e:
+        print(f"Could not compute Krippendorffs alpha: {e}")
+        return None
