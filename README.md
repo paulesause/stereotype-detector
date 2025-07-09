@@ -64,7 +64,26 @@ HUGGING_FACE_TOKEN=<your-huggingface-access-token>
 # Usage
 ## Finetune BERT Model
 
-Finetuning a BERT Classifier can be done with the **`finetune(...)`** method in the **`racism_classifier/finetuning/BERT.py`** module.
+Finetuning a BERT Classifier can be done with the **`finetune(...)`** method in the **`racism_classifier/finetuning/BERT.py`** module while the hyperparameter ranges are defined in `racism_classifier/config.py`.
+
+To perfom a fintuning follow this steps:
+
+1. Define hyperparameter ranges in `racism_classifier/config.py` as described below.
+2. Use `finetune(...)` method as described below
+
+### Hyperparameter Ranges
+
+Hyperparameter Ranges are defined in the `racism_classifier.config.HYPERPARAMETER_SPACE` dictionary. `Optuna` uses the specifications in this dictionary to propose hyperparameters for the next trail in the `racism_classifier.hyperparameter_optimization.optuna_hp_space_BERT(...)` method.
+
+An example initialisation is:
+
+```python
+HYPERPARAMETER_SPACE = {
+    "learning_rate": {"type": "float", "low": 1e-6, "high": 1e-4, "log": True},
+    "per_device_train_batch_size": {"type": "categorical", "choices": [1, 2, 3, 4]},
+    "num_train_epochs": {"type": "int", "low": 1, "high": 2}
+}
+```
 
 ### `finetune(...)`
 
