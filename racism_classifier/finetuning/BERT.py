@@ -1,17 +1,19 @@
 from transformers import AutoTokenizer, TrainingArguments, Trainer
 from transformers import DataCollatorWithPadding
+from datasets import Dataset
 from huggingface_hub import login
 from racism_classifier.utils import load_data, get_huggingface_token
 from racism_classifier.hyperparameter_optimization import make_model_init, compute_objective_BERT, optuna_hp_space_BERT, make_objective_BERT_cross_validation
 from racism_classifier.preprocessing import rescale_warm_hot_dimension, tokenize
 from racism_classifier.evaluation import compute_evaluation_metrics
 from racism_classifier.logger.metrics_logger import JsonlMetricsLoggerCallback
-from racism_classifier.config import BERT_MODEL_NAME, MODEL_DIR_PATH, LABEL_COLUMN_NAME, DATA_PATH, NUMBER_OF_TRIALS, RANDOM_STATE, TEST_SPLIT_SIZE
+from racism_classifier.config import  LABEL_COLUMN_NAME, NUMBER_OF_TRIALS, RANDOM_STATE, TEST_SPLIT_SIZE, BATCH_SIZE
 import datetime
 import optuna
 
 def finetune(
         model:str,
+        data: Dataset,
         output_dir:str,
         hub_model_id: str,
         evaluation_mode: str = "holdout",
@@ -31,8 +33,6 @@ def finetune(
     # ----------------------------------------------------------------------------------------------
     # Data loding
     # ---------------------------------------------------------------------------------------------
-
-    data = load_data(DATA_PATH)
 
     if n_example_sample:
         data = data.shuffle(seed=RANDOM_STATE).select(range(n_example_sample))
@@ -55,7 +55,7 @@ def finetune(
 
     data = data.map(tokenize(tokenizer),
                     batched=True,
-                    batch_size=8,
+                    batch_size=BATCH_SIZE,
                     remove_columns=columns_to_remove
                     )
 
@@ -72,8 +72,8 @@ def finetune(
         training_args = TrainingArguments(
             output_dir=output_dir,
 
-            per_device_train_batch_size=4,
-            per_device_eval_batch_size=4,
+            per_device_train_batch_size=BATCH_SIZE,
+            per_device_eval_batch_size=BATCH_SIZE,
             num_train_epochs=1,
             logging_strategy="epoch",
             hub_model_id=hub_model_id,

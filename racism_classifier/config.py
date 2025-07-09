@@ -22,6 +22,9 @@ NUMBER_OF_LABELS = 4
 # Evaluation
 TEST_SPLIT_SIZE = 0.2
 
+# Finetuning
+BATCH_SIZE = 4
+
 # Hyperparamter Search
 NUMBER_OF_TRIALS = 2
 RANDOM_STATE=42
