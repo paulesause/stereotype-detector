@@ -192,3 +192,6 @@ paulesause/
 
 # Loggings
 logs/
+
+#Debugging
+text.py

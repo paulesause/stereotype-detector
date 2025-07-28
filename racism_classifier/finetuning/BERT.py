@@ -8,6 +8,7 @@ from racism_classifier.preprocessing import rescale_warm_hot_dimension, tokenize
 from racism_classifier.evaluation import compute_evaluation_metrics
 from racism_classifier.logger.metrics_logger import JsonlMetricsLoggerCallback
 from racism_classifier.config import  LABEL_COLUMN_NAME, NUMBER_OF_TRIALS, RANDOM_STATE, TEST_SPLIT_SIZE, BATCH_SIZE
+from sklearn.model_selection import KFold
 import datetime
 import optuna
 
@@ -186,7 +187,7 @@ def finetune(
         )
     elif evaluation_mode == "nested_cv":
         outer_k = 5
-        kf_outer = optuna.integration.KFold(n_splits=outer_k, shuffle=True, random_state=RANDOM_STATE)
+        kf_outer = KFold(n_splits=outer_k, shuffle=True, random_state=RANDOM_STATE)
         all_outer_scores = []
         for outer_train_index, outer_test_index in kf_outer.split(data["train"]):
             outer_train_data = data["train"].select(outer_train_index)
