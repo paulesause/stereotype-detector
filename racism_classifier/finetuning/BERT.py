@@ -4,7 +4,7 @@ from datasets import Dataset
 from huggingface_hub import login
 from racism_classifier.utils import load_data, get_huggingface_token
 from racism_classifier.hyperparameter_optimization import make_model_init, compute_objective_BERT, optuna_hp_space_BERT, make_objective_BERT_cross_validation
-from racism_classifier.preprocessing import rescale_warm_hot_dimension, tokenize
+from racism_classifier.preprocessing import rescale_warm_hot_dimension, tokenize, heuristic_filter_hf
 from racism_classifier.evaluation import compute_evaluation_metrics
 from racism_classifier.logger.metrics_logger import JsonlMetricsLoggerCallback
 from racism_classifier.config import  LABEL_COLUMN_NAME, NUMBER_OF_TRIALS, RANDOM_STATE, TEST_SPLIT_SIZE, BATCH_SIZE
@@ -19,6 +19,7 @@ def finetune(
         hub_model_id: str,
         evaluation_mode: str = "holdout",
         n_example_sample:int = None,
+        heursitic_filtering: bool = False
 ):
     # parameter check
     assert isinstance(hub_model_id, str), "paramter hub_model_id must be specified and a str."
@@ -43,8 +44,12 @@ def finetune(
     # ----------------------------------------------------------------------------------------------
 
     # Rescaling hot warm dimension
-    data = data.map(rescale_warm_hot_dimension, batched=True)
-
+    
+    data = data.map(rescale_warm_hot_dimension)#, batch=True)
+    
+    # Handling imbalanced Data
+    if heursitic_filtering:
+        data=heuristic_filter_hf(data)
     # Train test split
     data = data.train_test_split(test_size=TEST_SPLIT_SIZE)
         
