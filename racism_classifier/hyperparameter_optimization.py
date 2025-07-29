@@ -1,4 +1,5 @@
-from transformers import Trainer, TrainingArguments, AutoModelForSequenceClassification, AutoTokenizer, DataCollatorWithPadding
+from transformers import Trainer, TrainingArguments, AutoModelForSequenceClassification, AutoConfig
+
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
 from racism_classifier.config import (BERT_MODEL_NAME, 
@@ -7,16 +8,23 @@ from racism_classifier.config import (BERT_MODEL_NAME,
                                       LABEL2ID_MAP, 
                                       RANDOM_STATE,
                                       NUMBER_CROSS_VALIDATION_FOLDS,
+                                      DROP_OUT_RATE,
                                       HYPERPARAMETER_SPACE)
 from racism_classifier.evaluation import compute_evaluation_metrics
 
-def make_model_init(model:str):
+def make_model_init(model_name: str=BERT_MODEL_NAME):
     def model_init():
+        config = AutoConfig.from_pretrained(
+            model_name,
+            num_labels=NUMBER_OF_LABELS,
+            id2label=ID2LABEL_MAP,
+            label2id=LABEL2ID_MAP,
+            hidden_dropout_prob=DROP_OUT_RATE,
+            attention_probs_dropout_prob=DROP_OUT_RATE
+        )
         return AutoModelForSequenceClassification.from_pretrained(
-            model, 
-            num_labels=NUMBER_OF_LABELS, 
-            id2label=ID2LABEL_MAP, 
-            label2id=LABEL2ID_MAP
+            model_name,
+            config=config
         )
     return model_init
 

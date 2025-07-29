@@ -7,7 +7,7 @@ from racism_classifier.hyperparameter_optimization import make_model_init, compu
 from racism_classifier.preprocessing import rescale_warm_hot_dimension, tokenize
 from racism_classifier.evaluation import compute_evaluation_metrics
 from racism_classifier.logger.metrics_logger import JsonlMetricsLoggerCallback
-from racism_classifier.config import  LABEL_COLUMN_NAME, NUMBER_OF_TRIALS, RANDOM_STATE, TEST_SPLIT_SIZE, BATCH_SIZE
+from racism_classifier.config import  LABEL_COLUMN_NAME, NUMBER_OF_TRIALS, RANDOM_STATE, TEST_SPLIT_SIZE, BATCH_SIZE, EPOCHS, LEARNING_RATE
 import datetime
 import optuna
 
@@ -74,12 +74,13 @@ def finetune(
 
             per_device_train_batch_size=BATCH_SIZE,
             per_device_eval_batch_size=BATCH_SIZE,
-            num_train_epochs=1,
+            num_train_epochs=EPOCHS,
             logging_strategy="epoch",
             hub_model_id=hub_model_id,
             logging_dir="logs",
             load_best_model_at_end=True,
-            save_strategy="no"
+            save_strategy="no",
+            learning_rate=LEARNING_RATE
         )
 
         trainer = Trainer(
