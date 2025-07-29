@@ -12,7 +12,7 @@ LABEL_COLUMN_NAME = "labels" # Do not change this name. Tranformers excpect them
 
 # Paths
 MODEL_DIR_PATH = "models"
-DATA_PATH = "data/ICR_sample.xlsx"
+DATA_PATH = "data/sample_parahraphs_1200.xlsx"
 
 # DATA Lables
 ID2LABEL_MAP = {0: "cold = 0 AND warm = 0", 1: "cold = 1 AND warm = 0", 2: "cold = 0 AND warm = 1", 3: "cold = 1 AND warm = 1"}
@@ -23,16 +23,20 @@ NUMBER_OF_LABELS = 4
 TEST_SPLIT_SIZE = 0.2
 
 # Finetuning
-BATCH_SIZE = 4
+BATCH_SIZE = 16
+EPOCHS = 3
+LEARNING_RATE = 1e-5
 
 # Hyperparamter Search
 NUMBER_OF_TRIALS = 2
 RANDOM_STATE=42
 NUMBER_CROSS_VALIDATION_FOLDS=3
+DROP_OUT_RATE = 0.3
 
 # Hyperparameter space
 HYPERPARAMETER_SPACE = {
     "learning_rate": {"type": "float", "low": 1e-6, "high": 1e-4, "log": True},
     "per_device_train_batch_size": {"type": "categorical", "choices": [1, 2, 3, 4]},
-    "num_train_epochs": {"type": "int", "low": 1, "high": 2}
+    "num_train_epochs": {"type": "int", "low": 1, "high": 2},
+    "warmup_steps": {"type": "int", "low": 1, "high": 100}
 }
