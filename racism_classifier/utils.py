@@ -81,7 +81,7 @@ class FocalLoss(nn.Module):
         self.gamma = gamma
         self.alpha = alpha
         self.reduction = reduction
-
+        
     def forward(self, logits, targets):
         ce_loss = nn.functional.cross_entropy(logits, targets, reduction='none', weight=self.alpha)
         pt = torch.exp(-ce_loss)
@@ -94,11 +94,11 @@ class FocalLoss(nn.Module):
             return focal_loss
 
 class FocalLossTrainer(Trainer):
-    def __init__(self, *args, gamma=2.0, alpha=None, **kwargs):
+    def __init__(self, *args, gamma=2.0, alpha=None,reduction="mean", **kwargs):
         super().__init__(*args, **kwargs)
-        self.focal_loss = FocalLoss(gamma=gamma, alpha=alpha)
+        self.focal_loss = FocalLoss(gamma=gamma, alpha=alpha,reduction=reduction)
 
-    def compute_loss(self, model, inputs, return_outputs=False):
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs): 
         labels = inputs.get("labels")
         outputs = model(**inputs)
         logits = outputs.get("logits")
