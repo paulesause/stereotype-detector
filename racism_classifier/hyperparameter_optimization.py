@@ -11,8 +11,9 @@ from racism_classifier.config import (BERT_MODEL_NAME,
                                       DROP_OUT_RATE,
                                       HYPERPARAMETER_SPACE)
 from racism_classifier.evaluation import compute_evaluation_metrics
+from racism_classifier.utils import freeze_layers
 
-def make_model_init(model_name: str=BERT_MODEL_NAME):
+def make_model_init(model_name: str=BERT_MODEL_NAME, freeze_embeddings: bool=False, num_transformer_layers_freeze: int=0):
     def model_init():
         config = AutoConfig.from_pretrained(
             model_name,
@@ -22,15 +23,21 @@ def make_model_init(model_name: str=BERT_MODEL_NAME):
             hidden_dropout_prob=DROP_OUT_RATE,
             attention_probs_dropout_prob=DROP_OUT_RATE
         )
-        return AutoModelForSequenceClassification.from_pretrained(
+        loaded_model = AutoModelForSequenceClassification.from_pretrained(
             model_name,
             config=config
         )
+
+        freeze_layers(loaded_model, freeze_embeddings, num_transformer_layers_freeze)
+        
+        return loaded_model
     return model_init
 
-def optuna_hp_space_BERT(trial):
+def optuna_hp_space_BERT(trial, enable_layer_freezing=True):
     hp = {}
     for name, params in HYPERPARAMETER_SPACE.items():
+        if not enable_layer_freezing and name in ["freeze_embeddings", "num_transformer_layers_freeze"]:
+            continue
         ptype = params.get("type")
         if ptype == "float":
             hp[name] = trial.suggest_float(
@@ -51,6 +58,11 @@ def optuna_hp_space_BERT(trial):
                 name,
                 params["choices"]
             )
+        elif ptype == "bool":
+            hp[name] = trial.suggest_categorical(
+                name,
+                [True, False]
+            )
         else:
             raise ValueError(f"Unsupported hyperparameter type: {ptype}")
     return hp
@@ -60,13 +72,17 @@ def compute_objective_BERT(metrics):
     return metrics["eval_f1_macro"]
 
 
-def make_objective_BERT_cross_validation(model, tokenized_dataset, tokenizer, data_collator):
+def make_objective_BERT_cross_validation(model, tokenized_dataset, tokenizer, data_collator, enable_layer_freezing=True):
     def objective_BERT_cross_validation(trial):
         """
         Applies Cross Validation together with the optuna library
         """
         # Trial parameters
-        hp_space = optuna_hp_space_BERT(trial)
+        hp_space = optuna_hp_space_BERT(trial, enable_layer_freezing=enable_layer_freezing)
+
+        # Get layer freezing parameters
+        freeze_embeddings = hp_space.get("freeze_embeddings", False)
+        num_transformer_layers_freeze = hp_space.get("num_transformer_layers_freeze", 0)
         
         # Cross-validation
         skf = StratifiedKFold(n_splits=NUMBER_CROSS_VALIDATION_FOLDS, shuffle=True, random_state=RANDOM_STATE)
@@ -94,7 +110,7 @@ def make_objective_BERT_cross_validation(model, tokenized_dataset, tokenizer, da
 
             trainer = Trainer(
                 model=None,
-                model_init=make_model_init(model),
+                model_init=make_model_init(model, freeze_embeddings, num_transformer_layers_freeze),
                 args=training_args,
                 train_dataset=train_dataset,
                 eval_dataset=val_dataset,

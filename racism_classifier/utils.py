@@ -59,3 +59,28 @@ def create_model_card():
     )
     card.save(f'{MODEL_DIR_PATH}/README.md')
     print(card)
+
+# freeze layers (for Distilbert)
+def freeze_layers(model, freeze_embeddings: bool = False, num_transformer_layers_freeze: int = 0):
+    """
+    Freezes layers of a DistilBERT model during fine-tuning.
+
+    Parameters:
+    - model: The DistilBERT model (e.g., DistilBertForSequenceClassification).
+    - freeze_embeddings (bool): If True, the embedding layer will be frozen (no gradient updates).
+    - num_transformer_layers_freeze (int): Number of bottom transformer layers to freeze (0–6 for DistilBERT).
+
+    This function modifies the model in-place by disabling gradients for the specified layers.
+    """
+    if freeze_embeddings:
+        for param in model.distilbert.embeddings.parameters():
+            param.requires_grad = False
+        print("Embedding layer frozen.")
+    else:
+        print("Embedding layer not frozen.")
+    
+    for i, layer in enumerate(model.distilbert.transformer.layer):
+        freeze = i < num_transformer_layers_freeze
+        for param in layer.parameters():
+            param.requires_grad = not freeze
+        print(f"Transformer layer {i} {'frozen' if freeze else 'not frozen'}.")

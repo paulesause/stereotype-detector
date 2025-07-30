@@ -1,8 +1,8 @@
 from transformers import AutoTokenizer, TrainingArguments, Trainer
 from transformers import DataCollatorWithPadding
 from datasets import Dataset
-from huggingface_hub import login
-from racism_classifier.utils import load_data, get_huggingface_token
+from huggingface_hub import login, ModelCard
+from racism_classifier.utils import load_data, get_huggingface_token # , create_model_card
 from racism_classifier.hyperparameter_optimization import make_model_init, compute_objective_BERT, optuna_hp_space_BERT, make_objective_BERT_cross_validation
 from racism_classifier.preprocessing import rescale_warm_hot_dimension, tokenize
 from racism_classifier.evaluation import compute_evaluation_metrics
@@ -10,6 +10,8 @@ from racism_classifier.logger.metrics_logger import JsonlMetricsLoggerCallback
 from racism_classifier.config import  LABEL_COLUMN_NAME, NUMBER_OF_TRIALS, RANDOM_STATE, TEST_SPLIT_SIZE, BATCH_SIZE, EPOCHS, LEARNING_RATE
 import datetime
 import optuna
+import json
+from pathlib import Path
 
 def finetune(
         model:str,
@@ -18,6 +20,7 @@ def finetune(
         hub_model_id: str,
         evaluation_mode: str = "holdout",
         n_example_sample:int = None,
+        enable_layer_freezing: bool = True,
 ):
     # parameter check
     assert isinstance(hub_model_id, str), "paramter hub_model_id must be specified and a str."
@@ -122,13 +125,22 @@ def finetune(
         setattr(training_args, "hub_private_repo", True)
         setattr(training_args, "push_to_hub", True)
 
+        # freeze_embeddings = best_run.hyperparameters.get("freeze_embeddings", False)
+        # num_transformer_layers_freeze = best_run.hyperparameters.get("num_transformer_layers_freeze", 0)
+        if enable_layer_freezing:
+            freeze_embeddings = best_run.hyperparameters.get("freeze_embeddings", False)
+            num_transformer_layers_freeze = best_run.hyperparameters.get("num_transformer_layers_freeze", 0)
+        else:
+            freeze_embeddings = False
+            num_transformer_layers_freeze = 0
+
         best_trainer = Trainer(
             model=None,
             args=training_args,
             train_dataset=data["train"],
             eval_dataset=data["test"],
             tokenizer=tokenizer,
-            model_init=make_model_init(model),
+            model_init=make_model_init(model, freeze_embeddings, num_transformer_layers_freeze),
             data_collator=data_collator,
             compute_metrics=compute_evaluation_metrics,
             callbacks=[JsonlMetricsLoggerCallback()]
@@ -137,10 +149,19 @@ def finetune(
     elif evaluation_mode == "cv":
         # hyperparameter tuning 
         study = optuna.create_study(direction="maximize", study_name="BERT_cross_validation")
-        study.optimize(make_objective_BERT_cross_validation(model, data["train"], tokenizer, data_collator), n_trials=NUMBER_OF_TRIALS)
+        study.optimize(make_objective_BERT_cross_validation(model, data["train"], tokenizer, data_collator, enable_layer_freezing=enable_layer_freezing), n_trials=NUMBER_OF_TRIALS)
 
         best_params = study.best_params
         study_name = study.study_name
+
+        # freeze_embeddings = best_params.get("freeze_embeddings", False)
+        # num_transformer_layers_freeze = best_params.get("num_transformer_layers_freeze", 0)
+        if enable_layer_freezing:
+            freeze_embeddings = best_params.get("freeze_embeddings", False)
+            num_transformer_layers_freeze = best_params.get("num_transformer_layers_freeze", 0)
+        else:
+            freeze_embeddings = False
+            num_transformer_layers_freeze = 0
 
         # -------------------------------------------------------------------------------------
         # Model Testing
@@ -180,7 +201,7 @@ def finetune(
             train_dataset=data["train"],
             eval_dataset=data["test"],
             tokenizer=tokenizer,
-            model_init=make_model_init(model),
+            model_init=make_model_init(model, freeze_embeddings, num_transformer_layers_freeze),
             data_collator=data_collator,
             compute_metrics=compute_evaluation_metrics,
             callbacks=[JsonlMetricsLoggerCallback()]
@@ -202,5 +223,22 @@ def finetune(
     current_time = str(datetime.datetime.now()).replace(" ", "_")
     commit_message = f"End-training-{current_time}"
 
-    best_trainer.push_to_hub(commit_message=commit_message)
+    # Build a dictionary with requires_grad info for each parameter
+    freeze_status = {
+        name: param.requires_grad
+        for name, param in best_trainer.model.named_parameters()
+    }
 
+    # Also include the freeze settings if available
+    freeze_config = {
+        "freeze_embeddings": freeze_embeddings,
+        "num_transformer_layers_freeze": num_transformer_layers_freeze,
+        "parameter_trainability": freeze_status
+    }
+
+    # Save to file
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    with open(f"{output_dir}/freeze_config.json", "w") as f:
+        json.dump(freeze_config, f, indent=4)
+
+    best_trainer.push_to_hub(commit_message=commit_message)
