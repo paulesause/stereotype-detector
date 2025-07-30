@@ -12,7 +12,7 @@ from racism_classifier.config import (BERT_MODEL_NAME,
                                       HYPERPARAMETER_SPACE)
 from racism_classifier.evaluation import compute_evaluation_metrics
 
-def make_model_init(model_name: str=BERT_MODEL_NAME):
+def make_model_init(model_name: str=BERT_MODEL_NAME, frozen_layers: list=None):
     def model_init():
         config = AutoConfig.from_pretrained(
             model_name,
@@ -22,10 +22,17 @@ def make_model_init(model_name: str=BERT_MODEL_NAME):
             hidden_dropout_prob=DROP_OUT_RATE,
             attention_probs_dropout_prob=DROP_OUT_RATE
         )
-        return AutoModelForSequenceClassification.from_pretrained(
+        loaded_model = AutoModelForSequenceClassification.from_pretrained(
             model_name,
             config=config
         )
+
+        for frozen_layer_name in frozen_layers:
+            for layer_name, layer_params in loaded_model.named_parameters():
+                if frozen_layer_name in layer_name:
+                    layer_params.requires_grad = False
+
+        return loaded_model
     return model_init
 
 def optuna_hp_space_BERT(trial):
@@ -60,7 +67,7 @@ def compute_objective_BERT(metrics):
     return metrics["eval_f1_macro"]
 
 
-def make_objective_BERT_cross_validation(model, tokenized_dataset, tokenizer, data_collator):
+def make_objective_BERT_cross_validation(model, tokenized_dataset, tokenizer, data_collator, frozen_layers):
     def objective_BERT_cross_validation(trial):
         """
         Applies Cross Validation together with the optuna library
@@ -94,7 +101,7 @@ def make_objective_BERT_cross_validation(model, tokenized_dataset, tokenizer, da
 
             trainer = Trainer(
                 model=None,
-                model_init=make_model_init(model),
+                model_init=make_model_init(model, frozen_layers=frozen_layers),
                 args=training_args,
                 train_dataset=train_dataset,
                 eval_dataset=val_dataset,

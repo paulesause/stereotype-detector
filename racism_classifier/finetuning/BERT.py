@@ -14,10 +14,11 @@ import optuna
 def finetune(
         model:str,
         data: Dataset,
-        output_dir:str,
+        output_dir: str,
         hub_model_id: str,
         evaluation_mode: str = "holdout",
-        n_example_sample:int = None,
+        n_example_sample: int = None,
+        frozen_layers: list = None,
 ):
     # parameter check
     assert isinstance(hub_model_id, str), "paramter hub_model_id must be specified and a str."
@@ -63,6 +64,9 @@ def finetune(
     # Fine-Tuning
     # -------------------------------------------------------------------------------------------
 
+    # Frozen Layers:
+    print(frozen_layers if frozen_layers else "No frozen layers specified.")
+
     # Hyperparameter Tuning
     if evaluation_mode == "holdout":
         # train-evaluation split
@@ -89,7 +93,7 @@ def finetune(
             train_dataset=train_validation["train"],
             eval_dataset=train_validation["validation"],
             tokenizer=tokenizer,
-            model_init=make_model_init(model),
+            model_init=make_model_init(model, frozen_layers=frozen_layers),
             data_collator=data_collator,
             compute_metrics=compute_evaluation_metrics,
             callbacks=[JsonlMetricsLoggerCallback()]
@@ -128,7 +132,7 @@ def finetune(
             train_dataset=data["train"],
             eval_dataset=data["test"],
             tokenizer=tokenizer,
-            model_init=make_model_init(model),
+            model_init=make_model_init(model, frozen_layers=frozen_layers),
             data_collator=data_collator,
             compute_metrics=compute_evaluation_metrics,
             callbacks=[JsonlMetricsLoggerCallback()]
@@ -137,7 +141,7 @@ def finetune(
     elif evaluation_mode == "cv":
         # hyperparameter tuning 
         study = optuna.create_study(direction="maximize", study_name="BERT_cross_validation")
-        study.optimize(make_objective_BERT_cross_validation(model, data["train"], tokenizer, data_collator), n_trials=NUMBER_OF_TRIALS)
+        study.optimize(make_objective_BERT_cross_validation(model, data["train"], tokenizer, data_collator, frozen_layers=frozen_layers), n_trials=NUMBER_OF_TRIALS)
 
         best_params = study.best_params
         study_name = study.study_name
@@ -180,7 +184,7 @@ def finetune(
             train_dataset=data["train"],
             eval_dataset=data["test"],
             tokenizer=tokenizer,
-            model_init=make_model_init(model),
+            model_init=make_model_init(model, frozen_layers=frozen_layers),
             data_collator=data_collator,
             compute_metrics=compute_evaluation_metrics,
             callbacks=[JsonlMetricsLoggerCallback()]
