@@ -5,6 +5,9 @@ from transformers import AutoTokenizer
 from huggingface_hub import ModelCardData, ModelCard
 from dotenv import load_dotenv
 import os
+import torch
+import torch.nn as nn
+from transformers import Trainer
 
 load_dotenv()
 
@@ -59,3 +62,45 @@ def create_model_card():
     )
     card.save(f'{MODEL_DIR_PATH}/README.md')
     print(card)
+
+class FocalLoss(nn.Module):
+    """Focal Loss for multi-class classification.
+    This loss is designed to address class imbalance by down-weighting the loss contribution.
+    Args:
+    gamma: weight for "easy" examples. If 0, gamma=cross-entropy (default 2)
+    higher gamma= more focus on hard to classify examples.
+    alpha: tensor with shape [num_classes] or scalar for pos v.s. neg class binary.
+    higher alpha=loss from class amplified
+    Use for underrepresented classes.
+    reduction: 'none', 'mean', or 'sum'. Default is 'mean'.
+    None is used so that manual weighting for each loss can be done
+    After Loss is calculated, it must be reduced to mean or sum.
+    """
+    def __init__(self, gamma=2.0, alpha=None, reduction='none'):
+        super().__init__()
+        self.gamma = gamma
+        self.alpha = alpha
+        self.reduction = reduction
+
+    def forward(self, logits, targets):
+        ce_loss = nn.functional.cross_entropy(logits, targets, reduction='none', weight=self.alpha)
+        pt = torch.exp(-ce_loss)
+        focal_loss = ((1 - pt) ** self.gamma) * ce_loss
+        if self.reduction == 'mean':
+            return focal_loss.mean()
+        elif self.reduction == 'sum':
+            return focal_loss.sum()
+        else:
+            return focal_loss
+
+class FocalLossTrainer(Trainer):
+    def __init__(self, *args, gamma=2.0, alpha=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.focal_loss = FocalLoss(gamma=gamma, alpha=alpha)
+
+    def compute_loss(self, model, inputs, return_outputs=False):
+        labels = inputs.get("labels")
+        outputs = model(**inputs)
+        logits = outputs.get("logits")
+        loss = self.focal_loss(logits, labels)
+        return (loss, outputs) if return_outputs else loss
