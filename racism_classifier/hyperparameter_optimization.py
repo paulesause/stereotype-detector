@@ -60,7 +60,7 @@ def compute_objective_BERT(metrics):
     return metrics["eval_f1_macro"]
 
 
-def make_objective_BERT_cross_validation(model, tokenized_dataset, tokenizer, data_collator):
+def make_objective_BERT_cross_validation(model, tokenized_dataset, tokenizer, data_collator, trainer_class):
     def objective_BERT_cross_validation(trial):
         """
         Applies Cross Validation together with the optuna library
@@ -92,7 +92,7 @@ def make_objective_BERT_cross_validation(model, tokenized_dataset, tokenizer, da
             for n, v in hp_space.items():
                 setattr(training_args, n, v)
 
-            trainer = Trainer(
+            trainer = trainer_class(
                 model=None,
                 model_init=make_model_init(model),
                 args=training_args,
