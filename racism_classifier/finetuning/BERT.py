@@ -10,6 +10,7 @@ from racism_classifier.logger.metrics_logger import JsonlMetricsLoggerCallback
 from racism_classifier.config import  LABEL_COLUMN_NAME, NUMBER_OF_TRIALS, RANDOM_STATE, TEST_SPLIT_SIZE, BATCH_SIZE
 from sklearn.model_selection import KFold
 from racism_classifier.config import  LABEL_COLUMN_NAME, NUMBER_OF_TRIALS, RANDOM_STATE, TEST_SPLIT_SIZE, BATCH_SIZE, EPOCHS, LEARNING_RATE
+from racism_classifier.utils import FocalLossTrainer
 import datetime
 import optuna
 
@@ -20,11 +21,14 @@ def finetune(
         hub_model_id: str,
         evaluation_mode: str = "holdout",
         n_example_sample:int = None,
-        heursitic_filtering: bool = False
+        heursitic_filtering: bool = False,
+        use_focal_loss: bool = False
 ):
     # parameter check
     assert isinstance(hub_model_id, str), "paramter hub_model_id must be specified and a str."
 
+    # Set Trainer Class to either default of custom
+    trainer_class = FocalLossTrainer if use_focal_loss else Trainer
     # ---------------------------------------------------------------------------------------------
     # Logins
     # ---------------------------------------------------------------------------------------------
@@ -90,7 +94,7 @@ def finetune(
             learning_rate=LEARNING_RATE
         )
 
-        trainer = Trainer(
+        trainer = trainer_class(
             model=None,
             args=training_args,
             train_dataset=train_validation["train"],
@@ -99,7 +103,7 @@ def finetune(
             model_init=make_model_init(model),
             data_collator=data_collator,
             compute_metrics=compute_evaluation_metrics,
-            callbacks=[JsonlMetricsLoggerCallback()]
+            callbacks=[JsonlMetricsLoggerCallback()],
         )
 
         print("--- Perform hyperparameter Search ---\n")
@@ -129,7 +133,7 @@ def finetune(
         setattr(training_args, "hub_private_repo", True)
         setattr(training_args, "push_to_hub", True)
 
-        best_trainer = Trainer(
+        best_trainer = trainer_class(
             model=None,
             args=training_args,
             train_dataset=data["train"],
@@ -144,7 +148,7 @@ def finetune(
     elif evaluation_mode == "cv":
         # hyperparameter tuning 
         study = optuna.create_study(direction="maximize", study_name="BERT_cross_validation")
-        study.optimize(make_objective_BERT_cross_validation(model, data["train"], tokenizer, data_collator), n_trials=NUMBER_OF_TRIALS)
+        study.optimize(make_objective_BERT_cross_validation(model, data["train"], tokenizer, data_collator,trainer_class), n_trials=NUMBER_OF_TRIALS)
 
         best_params = study.best_params
         study_name = study.study_name
@@ -181,7 +185,7 @@ def finetune(
             setattr(training_args, n, v)
 
 
-        best_trainer = Trainer(
+        best_trainer = trainer_class(
             model=None,
             args=training_args,
             train_dataset=data["train"],
@@ -232,7 +236,7 @@ def finetune(
             for n, v in best_params.items():
                 setattr(training_args, n, v)
 
-            best_trainer = Trainer(
+            best_trainer = trainer_class(
             model=None,
             args=training_args,
             train_dataset=data["train"],
