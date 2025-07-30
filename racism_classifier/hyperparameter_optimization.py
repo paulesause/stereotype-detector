@@ -27,6 +27,7 @@ def make_model_init(model_name: str=BERT_MODEL_NAME, frozen_layers: list=None):
             config=config
         )
 
+        # freeze specified layers by setting their requires_grad to False
         for frozen_layer_name in frozen_layers:
             for layer_name, layer_params in loaded_model.named_parameters():
                 if frozen_layer_name in layer_name:
