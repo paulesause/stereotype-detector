@@ -1,10 +1,19 @@
-from racism_classifier.finetuning.BERT import finetune
-import numpy as np
-import pandas as pd
-dataset=pd.read_csv("C:/Users/Theo/Downloads/ICR_sample.csv")
-finetune("roberta-base",
-        dataset,
-        "C:/Users/Theo/Downloads",
-        "Twinn/BERT-NewsClassifier",
-        "nested_cv",
-        10)
+from racism_classifier.finetuning import BERT
+from racism_classifier.utils import load_data
+
+data = load_data("C:/Users/Theo/Downloads/sample_paragraphs_1200.xlsx")
+
+# holdout
+print("""
+# holdout
+      """)
+BERT.finetune(
+        model="distilbert-base-uncased",
+        data=data,
+        hub_model_id="lwolfrat/test-freeze",
+        evaluation_mode="holdout",
+        output_dir="models/test-freeze",
+        n_example_sample=10,
+        use_focal_loss=True,
+        heursitic_filtering=True,
+)
