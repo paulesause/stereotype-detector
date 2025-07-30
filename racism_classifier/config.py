@@ -38,5 +38,7 @@ HYPERPARAMETER_SPACE = {
     "learning_rate": {"type": "float", "low": 1e-6, "high": 1e-4, "log": True},
     "per_device_train_batch_size": {"type": "categorical", "choices": [1, 2, 3, 4]},
     "num_train_epochs": {"type": "int", "low": 1, "high": 2},
-    "warmup_steps": {"type": "int", "low": 1, "high": 100}
+    "warmup_steps": {"type": "int", "low": 1, "high": 100},
+    "gamma": {"type": "float", "low": 0.1, "high": 5.0, "log": True},
+    "alpha": {"type": "float", "low": 0.1, "high": 1.0, "log": True},
 }
