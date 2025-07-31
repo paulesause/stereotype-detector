@@ -10,10 +10,11 @@ print("""
 BERT.finetune(
         model="distilbert-base-uncased",
         data=data,
-        hub_model_id="lwolfrat/test-freeze",
+        hub_model_id="Twinn/holdout-test",
         evaluation_mode="holdout",
         output_dir="models/test-freeze",
         n_example_sample=10,
         use_focal_loss=True,
         heursitic_filtering=True,
 )
+

@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 import os
 import torch
 import torch.nn as nn
-
+from dataclasses import dataclass, field
 
 load_dotenv()
 
@@ -116,8 +116,9 @@ class FocalLossTrainer(Trainer):
         return (loss, outputs) if return_outputs else loss
         
     
+
+
+@dataclass
 class CustomTrainingArguments(TrainingArguments):
-    def __init__(self, alpha=None, gamma=2, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.gamma = gamma
-        self.alpha = alpha
+    alpha: float = field(default=None, metadata={"help": "Alpha for focal loss"})
+    gamma: float = field(default=2.0, metadata={"help": "Gamma for focal loss"})
