@@ -1,7 +1,7 @@
 from transformers import AutoTokenizer, TrainingArguments, Trainer
 from transformers import DataCollatorWithPadding
 from datasets import Dataset
-from huggingface_hub import login, ModelCard
+from huggingface_hub import login, ModelCard, ModelCardData, HfApi
 from racism_classifier.utils import load_data, get_huggingface_token # , create_model_card
 from racism_classifier.hyperparameter_optimization import make_model_init, compute_objective_BERT, optuna_hp_space_BERT, make_objective_BERT_cross_validation
 from racism_classifier.preprocessing import rescale_warm_hot_dimension, tokenize
@@ -10,7 +10,7 @@ from racism_classifier.logger.metrics_logger import JsonlMetricsLoggerCallback
 from racism_classifier.config import  LABEL_COLUMN_NAME, NUMBER_OF_TRIALS, RANDOM_STATE, TEST_SPLIT_SIZE, BATCH_SIZE, EPOCHS, LEARNING_RATE
 import datetime
 import optuna
-import json
+# import json
 from pathlib import Path
 
 def finetune(
@@ -223,22 +223,59 @@ def finetune(
     current_time = str(datetime.datetime.now()).replace(" ", "_")
     commit_message = f"End-training-{current_time}"
 
-    # Build a dictionary with requires_grad info for each parameter
-    freeze_status = {
-        name: param.requires_grad
-        for name, param in best_trainer.model.named_parameters()
-    }
+    # # Build a dictionary with requires_grad info for each parameter
+    # freeze_status = {
+    #     name: param.requires_grad
+    #     for name, param in best_trainer.model.named_parameters()
+    # }
 
-    # Also include the freeze settings if available
-    freeze_config = {
-        "freeze_embeddings": freeze_embeddings,
-        "num_transformer_layers_freeze": num_transformer_layers_freeze,
-        "parameter_trainability": freeze_status
-    }
+    # # Also include the freeze settings if available
+    # freeze_config = {
+    #     "freeze_embeddings": freeze_embeddings,
+    #     "num_transformer_layers_freeze": num_transformer_layers_freeze,
+    #     "parameter_trainability": freeze_status
+    # }
 
-    # Save to file
-    Path(output_dir).mkdir(parents=True, exist_ok=True)
-    with open(f"{output_dir}/freeze_config.json", "w") as f:
-        json.dump(freeze_config, f, indent=4)
+    # # Save to file
+    # Path(output_dir).mkdir(parents=True, exist_ok=True)
+    # with open(f"{output_dir}/freeze_config.json", "w") as f:
+    #     json.dump(freeze_config, f, indent=4)
 
     best_trainer.push_to_hub(commit_message=commit_message)
+
+
+    card_data = ModelCardData(
+    language='en',
+    license='mit',
+    library_name='transformers',
+    tags=['text-classification', 'layer-freezing', 'bert'],
+    base_model=model,
+    datasets='custom',
+    )
+
+    freeze_description = f"""
+## Layer Freezing Details
+
+- `freeze_embeddings`: {freeze_embeddings}
+- `num_transformer_layers_freeze`: {num_transformer_layers_freeze}
+"""
+
+    card = ModelCard.from_template(
+    card_data,
+    model_id=hub_model_id,
+    model_description=f"This BERT-based classifier was fine-tuned with the following layer freezing configuration:\n{freeze_description}",
+    )
+
+    readme_path = Path(output_dir) / "README.md"
+    card.save(readme_path)
+
+    # Upload the card manually via API
+    api = HfApi()
+    api.upload_file(
+    path_or_fileobj=str(readme_path),
+    path_in_repo="README.md",
+    repo_id=hub_model_id,
+    repo_type="model",
+    token=hugging_face_token,
+    commit_message="Updating model card with freezing details"
+    )

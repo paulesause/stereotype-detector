@@ -10,9 +10,9 @@ print("""
 BERT.finetune(
         model="distilbert-base-uncased",
         data=data,
-        hub_model_id="lwolfrat/test-freeze",
+        hub_model_id="lwolfrat/test-nofreeze-modcard",
         evaluation_mode="holdout",
-        output_dir="models/test-freeze",
+        output_dir="models/test-nofreeze-modcard",
         n_example_sample=10,
-        enable_layer_freezing=True
+        enable_layer_freezing=False
 )
