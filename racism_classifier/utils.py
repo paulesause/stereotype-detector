@@ -1,13 +1,13 @@
 import pandas as pd
 from datasets import Dataset
 from racism_classifier.config import DATA_PATH, MODEL_DIR_PATH, BERT_MODEL_NAME
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, Trainer, TrainingArguments
 from huggingface_hub import ModelCardData, ModelCard
 from dotenv import load_dotenv
 import os
 import torch
 import torch.nn as nn
-from transformers import Trainer
+
 
 load_dotenv()
 
@@ -83,7 +83,17 @@ class FocalLoss(nn.Module):
         self.reduction = reduction
         
     def forward(self, logits, targets):
-        ce_loss = nn.functional.cross_entropy(logits, targets, reduction='none', weight=self.alpha)
+        # Convert alpha to tensor if it's a float (for multi-class, all classes get alpha)
+        weight = self.alpha
+        if isinstance(self.alpha, float):
+            num_classes = logits.size(-1)
+            # You can customize this: here, all classes get the same weight
+            weight = torch.full((num_classes,), self.alpha, device=logits.device, dtype=logits.dtype)
+        elif isinstance(self.alpha, list):
+            weight = torch.tensor(self.alpha, device=logits.device, dtype=logits.dtype)
+        # else: if None or already a tensor, use as is
+
+        ce_loss = nn.functional.cross_entropy(logits, targets, reduction='none', weight=weight)
         pt = torch.exp(-ce_loss)
         focal_loss = ((1 - pt) ** self.gamma) * ce_loss
         if self.reduction == 'mean':
@@ -104,3 +114,10 @@ class FocalLossTrainer(Trainer):
         logits = outputs.get("logits")
         loss = self.focal_loss(logits, labels)
         return (loss, outputs) if return_outputs else loss
+        
+    
+class CustomTrainingArguments(TrainingArguments):
+    def __init__(self, alpha=None, gamma=2, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.gamma = gamma
+        self.alpha = alpha
