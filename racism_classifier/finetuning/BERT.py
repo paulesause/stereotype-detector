@@ -2,12 +2,15 @@ from transformers import AutoTokenizer, TrainingArguments, Trainer
 from transformers import DataCollatorWithPadding
 from datasets import Dataset
 from huggingface_hub import login
-from racism_classifier.utils import load_data, get_huggingface_token
+from racism_classifier.utils import load_data, get_huggingface_token,CustomTrainingArguments
 from racism_classifier.hyperparameter_optimization import make_model_init, compute_objective_BERT, optuna_hp_space_BERT, make_objective_BERT_cross_validation
-from racism_classifier.preprocessing import rescale_warm_hot_dimension, tokenize
+from racism_classifier.preprocessing import rescale_warm_hot_dimension, tokenize, heuristic_filter_hf
 from racism_classifier.evaluation import compute_evaluation_metrics
 from racism_classifier.logger.metrics_logger import JsonlMetricsLoggerCallback
-from racism_classifier.config import  LABEL_COLUMN_NAME, NUMBER_OF_TRIALS, RANDOM_STATE, TEST_SPLIT_SIZE, BATCH_SIZE, EPOCHS, LEARNING_RATE
+from racism_classifier.config import  LABEL_COLUMN_NAME, NUMBER_OF_TRIALS, RANDOM_STATE, TEST_SPLIT_SIZE, BATCH_SIZE
+from sklearn.model_selection import KFold
+from racism_classifier.config import  LABEL_COLUMN_NAME, NUMBER_OF_TRIALS, RANDOM_STATE, TEST_SPLIT_SIZE, BATCH_SIZE, EPOCHS, LEARNING_RATE, ALPHA, GAMMA
+from racism_classifier.utils import FocalLossTrainer
 import datetime
 import optuna
 
@@ -18,10 +21,14 @@ def finetune(
         hub_model_id: str,
         evaluation_mode: str = "holdout",
         n_example_sample:int = None,
+        heursitic_filtering: bool = False,
+        use_focal_loss: bool = False
 ):
     # parameter check
     assert isinstance(hub_model_id, str), "paramter hub_model_id must be specified and a str."
 
+    # Set Trainer Class to either default of custom
+    trainer_class = FocalLossTrainer if use_focal_loss else Trainer
     # ---------------------------------------------------------------------------------------------
     # Logins
     # ---------------------------------------------------------------------------------------------
@@ -32,7 +39,7 @@ def finetune(
 
     # ----------------------------------------------------------------------------------------------
     # Data loding
-    # ---------------------------------------------------------------------------------------------
+    # ----------------------------------------------------------------------------------------------
 
     if n_example_sample:
         data = data.shuffle(seed=RANDOM_STATE).select(range(n_example_sample))
@@ -42,8 +49,12 @@ def finetune(
     # ----------------------------------------------------------------------------------------------
 
     # Rescaling hot warm dimension
-    data = data.map(rescale_warm_hot_dimension, batched=True)
-
+    
+    data = data.map(rescale_warm_hot_dimension)#, batch=True)
+    
+    # Handling imbalanced Data
+    if heursitic_filtering:
+        data=heuristic_filter_hf(data)
     # Train test split
     data = data.train_test_split(test_size=TEST_SPLIT_SIZE)
         
@@ -69,7 +80,7 @@ def finetune(
         train_validation = data["train"].train_test_split(test_size=TEST_SPLIT_SIZE)
         train_validation["validation"] = train_validation.pop("test")
 
-        training_args = TrainingArguments(
+        training_args = CustomTrainingArguments(
             output_dir=output_dir,
 
             per_device_train_batch_size=BATCH_SIZE,
@@ -80,10 +91,12 @@ def finetune(
             logging_dir="logs",
             load_best_model_at_end=True,
             save_strategy="no",
-            learning_rate=LEARNING_RATE
+            learning_rate=LEARNING_RATE,
+            alpha=ALPHA,
+            gamma=GAMMA,
         )
 
-        trainer = Trainer(
+        trainer = trainer_class(
             model=None,
             args=training_args,
             train_dataset=train_validation["train"],
@@ -92,7 +105,7 @@ def finetune(
             model_init=make_model_init(model),
             data_collator=data_collator,
             compute_metrics=compute_evaluation_metrics,
-            callbacks=[JsonlMetricsLoggerCallback()]
+            callbacks=[JsonlMetricsLoggerCallback()],
         )
 
         print("--- Perform hyperparameter Search ---\n")
@@ -104,14 +117,15 @@ def finetune(
             compute_objective=compute_objective_BERT,
             n_trials=NUMBER_OF_TRIALS
             )
-
         # -------------------------------------------------------------------------------------
         # Model Testing
         # -------------------------------------------------------------------------------------
 
         # Set training args to best found during hyperparameter search
         for n, v in best_run.hyperparameters.items():
-            setattr(training_args, n, v)
+            if hasattr(training_args, n):
+                setattr(training_args, n, v)
+            print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
 
         # Set training agrs to savte the model to the hub
         setattr(training_args, "save_strategy", "epoch")
@@ -122,7 +136,7 @@ def finetune(
         setattr(training_args, "hub_private_repo", True)
         setattr(training_args, "push_to_hub", True)
 
-        best_trainer = Trainer(
+        best_trainer = trainer_class(
             model=None,
             args=training_args,
             train_dataset=data["train"],
@@ -131,13 +145,18 @@ def finetune(
             model_init=make_model_init(model),
             data_collator=data_collator,
             compute_metrics=compute_evaluation_metrics,
-            callbacks=[JsonlMetricsLoggerCallback()]
-        )
+            callbacks=[JsonlMetricsLoggerCallback()],
+            )
+
+        # Print gamma and alpha if using FocalLossTrainer
+        # if isinstance(trainer, FocalLossTrainer):
+        #     print(f"FocalLossTrainer gamma: {trainer.focal_loss.gamma}")
+        #     print(f"FocalLossTrainer alpha: {trainer.focal_loss.alpha}")
 
     elif evaluation_mode == "cv":
         # hyperparameter tuning 
         study = optuna.create_study(direction="maximize", study_name="BERT_cross_validation")
-        study.optimize(make_objective_BERT_cross_validation(model, data["train"], tokenizer, data_collator), n_trials=NUMBER_OF_TRIALS)
+        study.optimize(make_objective_BERT_cross_validation(model, data["train"], tokenizer, data_collator,trainer_class), n_trials=NUMBER_OF_TRIALS)
 
         best_params = study.best_params
         study_name = study.study_name
@@ -147,7 +166,7 @@ def finetune(
         # -------------------------------------------------------------------------------------
 
         # Train model with best params
-        training_args = TrainingArguments(
+        training_args = CustomTrainingArguments(
             output_dir=output_dir,
 
             per_device_train_batch_size=4,
@@ -174,7 +193,7 @@ def finetune(
             setattr(training_args, n, v)
 
 
-        best_trainer = Trainer(
+        best_trainer = trainer_class(
             model=None,
             args=training_args,
             train_dataset=data["train"],
@@ -185,7 +204,57 @@ def finetune(
             compute_metrics=compute_evaluation_metrics,
             callbacks=[JsonlMetricsLoggerCallback()]
         )
+    elif evaluation_mode == "nested_cv":
+        outer_k = 5
+        kf_outer = KFold(n_splits=outer_k, shuffle=True, random_state=RANDOM_STATE)
+        all_outer_scores = []
+        for outer_train_index, outer_test_index in kf_outer.split(data["train"]):
+            outer_train_data = data["train"].select(outer_train_index)
+            outer_test_data = data["train"].select(outer_test_index)
 
+            # Inner CV for hyperparameter tuning
+            study = optuna.create_study(direction="maximize", study_name="BERT_nested_cross_validation")
+            study.optimize(make_objective_BERT_cross_validation(model, outer_train_data, tokenizer, data_collator), n_trials=NUMBER_OF_TRIALS)
+
+            best_params = study.best_params
+
+            # Train model with best params
+            training_args = CustomTrainingArguments(
+            output_dir=output_dir,
+
+            per_device_train_batch_size=4,
+            per_device_eval_batch_size=4,
+            num_train_epochs=1,
+            
+            save_strategy="epoch",
+            eval_strategy="epoch",
+            logging_strategy="epoch",
+            
+            hub_model_id=hub_model_id,
+            logging_dir="logs",
+            hub_strategy="end",
+            hub_private_repo=True,
+            push_to_hub=True,
+
+            load_best_model_at_end=True,
+            save_total_limit=1
+        )
+
+            # Set training args to best found during hyperparameter search
+            for n, v in best_params.items():
+                setattr(training_args, n, v)
+
+            best_trainer = trainer_class(
+            model=None,
+            args=training_args,
+            train_dataset=data["train"],
+            eval_dataset=data["test"],
+            tokenizer=tokenizer,
+            model_init=make_model_init(model),
+            data_collator=data_collator,
+            compute_metrics=compute_evaluation_metrics,
+            callbacks=[JsonlMetricsLoggerCallback()]
+        )
     else:
         raise ValueError("Unsupported evaluation_mode parameter. Chose either 'holdout' or 'cv'.")
     
@@ -203,4 +272,13 @@ def finetune(
     commit_message = f"End-training-{current_time}"
 
     best_trainer.push_to_hub(commit_message=commit_message)
+    from dataclasses import asdict
+    import json
 
+    with open("training_args.json", "w") as f:
+        json.dump(asdict(training_args), f, indent=4)
+
+    # Print the contents of training_args.json to the console
+    with open("training_args.json", "r") as f:
+        print("\n--- training_args.json contents ---")
+        print(f.read())
