@@ -2,14 +2,14 @@ from transformers import AutoTokenizer, TrainingArguments, Trainer
 from transformers import DataCollatorWithPadding
 from datasets import Dataset
 from huggingface_hub import login
-from racism_classifier.utils import load_data, get_huggingface_token
+from racism_classifier.utils import load_data, get_huggingface_token,CustomTrainingArguments
 from racism_classifier.hyperparameter_optimization import make_model_init, compute_objective_BERT, optuna_hp_space_BERT, make_objective_BERT_cross_validation
 from racism_classifier.preprocessing import rescale_warm_hot_dimension, tokenize, heuristic_filter_hf
 from racism_classifier.evaluation import compute_evaluation_metrics
 from racism_classifier.logger.metrics_logger import JsonlMetricsLoggerCallback
 from racism_classifier.config import  LABEL_COLUMN_NAME, NUMBER_OF_TRIALS, RANDOM_STATE, TEST_SPLIT_SIZE, BATCH_SIZE
 from sklearn.model_selection import KFold
-from racism_classifier.config import  LABEL_COLUMN_NAME, NUMBER_OF_TRIALS, RANDOM_STATE, TEST_SPLIT_SIZE, BATCH_SIZE, EPOCHS, LEARNING_RATE
+from racism_classifier.config import  LABEL_COLUMN_NAME, NUMBER_OF_TRIALS, RANDOM_STATE, TEST_SPLIT_SIZE, BATCH_SIZE, EPOCHS, LEARNING_RATE, ALPHA, GAMMA
 from racism_classifier.utils import FocalLossTrainer
 import datetime
 import optuna
@@ -80,7 +80,7 @@ def finetune(
         train_validation = data["train"].train_test_split(test_size=TEST_SPLIT_SIZE)
         train_validation["validation"] = train_validation.pop("test")
 
-        training_args = TrainingArguments(
+        training_args = CustomTrainingArguments(
             output_dir=output_dir,
 
             per_device_train_batch_size=BATCH_SIZE,
@@ -91,7 +91,9 @@ def finetune(
             logging_dir="logs",
             load_best_model_at_end=True,
             save_strategy="no",
-            learning_rate=LEARNING_RATE
+            learning_rate=LEARNING_RATE,
+            alpha=ALPHA,
+            gamma=GAMMA,
         )
 
         trainer = trainer_class(
@@ -115,14 +117,15 @@ def finetune(
             compute_objective=compute_objective_BERT,
             n_trials=NUMBER_OF_TRIALS
             )
-
         # -------------------------------------------------------------------------------------
         # Model Testing
         # -------------------------------------------------------------------------------------
 
         # Set training args to best found during hyperparameter search
         for n, v in best_run.hyperparameters.items():
-            setattr(training_args, n, v)
+            if hasattr(training_args, n):
+                setattr(training_args, n, v)
+            print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
 
         # Set training agrs to savte the model to the hub
         setattr(training_args, "save_strategy", "epoch")
@@ -142,8 +145,13 @@ def finetune(
             model_init=make_model_init(model),
             data_collator=data_collator,
             compute_metrics=compute_evaluation_metrics,
-            callbacks=[JsonlMetricsLoggerCallback()]
-        )
+            callbacks=[JsonlMetricsLoggerCallback()],
+            )
+
+        # Print gamma and alpha if using FocalLossTrainer
+        # if isinstance(trainer, FocalLossTrainer):
+        #     print(f"FocalLossTrainer gamma: {trainer.focal_loss.gamma}")
+        #     print(f"FocalLossTrainer alpha: {trainer.focal_loss.alpha}")
 
     elif evaluation_mode == "cv":
         # hyperparameter tuning 
@@ -158,7 +166,7 @@ def finetune(
         # -------------------------------------------------------------------------------------
 
         # Train model with best params
-        training_args = TrainingArguments(
+        training_args = CustomTrainingArguments(
             output_dir=output_dir,
 
             per_device_train_batch_size=4,
@@ -211,7 +219,7 @@ def finetune(
             best_params = study.best_params
 
             # Train model with best params
-            training_args = TrainingArguments(
+            training_args = CustomTrainingArguments(
             output_dir=output_dir,
 
             per_device_train_batch_size=4,
@@ -264,3 +272,13 @@ def finetune(
     commit_message = f"End-training-{current_time}"
 
     best_trainer.push_to_hub(commit_message=commit_message)
+    from dataclasses import asdict
+    import json
+
+    with open("training_args.json", "w") as f:
+        json.dump(asdict(training_args), f, indent=4)
+
+    # Print the contents of training_args.json to the console
+    with open("training_args.json", "r") as f:
+        print("\n--- training_args.json contents ---")
+        print(f.read())
