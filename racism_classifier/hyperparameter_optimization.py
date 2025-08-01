@@ -9,7 +9,9 @@ from racism_classifier.config import (BERT_MODEL_NAME,
                                       RANDOM_STATE,
                                       NUMBER_CROSS_VALIDATION_FOLDS,
                                       DROP_OUT_RATE,
-                                      HYPERPARAMETER_SPACE)
+                                      HYPERPARAMETER_SPACE_BASE,
+                                      HYPERPARAMETER_SPACE_FOCAL,
+                                      )
 from racism_classifier.evaluation import compute_evaluation_metrics
 
 def make_model_init(model_name: str=BERT_MODEL_NAME):
@@ -29,9 +31,10 @@ def make_model_init(model_name: str=BERT_MODEL_NAME):
         )
     return model_init
 
-def optuna_hp_space_BERT(trial):
+def optuna_hp_space_BERT(trial, use_focal_loss: bool):
+    space = HYPERPARAMETER_SPACE_FOCAL if use_focal_loss else HYPERPARAMETER_SPACE_BASE
     hp = {}
-    for name, params in HYPERPARAMETER_SPACE.items():
+    for name, params in space.items():
         ptype = params.get("type")
         if ptype == "float":
             hp[name] = trial.suggest_float(
@@ -61,13 +64,13 @@ def compute_objective_BERT(metrics):
     return metrics["eval_f1_macro"]
 
 
-def make_objective_BERT_cross_validation(model, tokenized_dataset, tokenizer, data_collator, trainer_class):
+def make_objective_BERT_cross_validation(model, tokenized_dataset, tokenizer, data_collator, trainer_class, use_focal_loss: bool):
     def objective_BERT_cross_validation(trial):
         """
         Applies Cross Validation together with the optuna library
         """
         # Trial parameters
-        hp_space = optuna_hp_space_BERT(trial)
+        hp_space = optuna_hp_space_BERT(trial, use_focal_loss)
         
         # Cross-validation
         skf = StratifiedKFold(n_splits=NUMBER_CROSS_VALIDATION_FOLDS, shuffle=True, random_state=RANDOM_STATE)
