@@ -42,11 +42,13 @@ HYPERPARAMETER_SPACE_BASE = {
     "per_device_train_batch_size": {"type": "categorical", "choices": [1, 2, 3, 4]},
     "num_train_epochs": {"type": "int", "low": 1, "high": 2},
     "warmup_steps": {"type": "int", "low": 1, "high": 100},
+    "freeze_embeddings": {"type": "bool"},
+    "num_transformer_layers_freeze": {"type": "int", "low": 0, "high": 6}
 }
 
 # Focal-loss extension
 HYPERPARAMETER_SPACE_FOCAL = {
     **HYPERPARAMETER_SPACE_BASE,
     "gamma": {"type": "float", "low": 0.1, "high": 5.0, "log": True},
-    "alpha": {"type": "float", "low": 0.1, "high": 1.0, "log": True},
+    "alpha": {"type": "float", "low": 0.1, "high": 1.0, "log": True}
 }
