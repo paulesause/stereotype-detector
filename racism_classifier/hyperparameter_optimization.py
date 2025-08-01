@@ -36,12 +36,22 @@ def make_model_init(model_name: str=BERT_MODEL_NAME, freeze_embeddings: bool=Fal
         return loaded_model
     return model_init
 
-def optuna_hp_space_BERT(trial, use_focal_loss: bool, enable_layer_freezing=True):
+def _max_freezable_layers(model_name: str) -> int:
+    if model_name == "distilbert-base-uncased":
+        return 6
+    if model_name in ("deepset/gbert-base", "bert-base-multilingual-cased"):
+        return 12
+    # fallback (you can raise if you prefer to be strict)
+    return 12
+
+def optuna_hp_space_BERT(trial, model_name: str, use_focal_loss: bool, enable_layer_freezing=True):
     space = HYPERPARAMETER_SPACE_FOCAL if use_focal_loss else HYPERPARAMETER_SPACE_BASE
     hp = {}
     for name, params in space.items():
         if not enable_layer_freezing and name in ["freeze_embeddings", "num_transformer_layers_freeze"]:
             continue
+        if name == "num_transformer_layers_freeze" and enable_layer_freezing:
+            params = {**params, "high": _max_freezable_layers(model_name)}
         ptype = params.get("type")
         if ptype == "float":
             hp[name] = trial.suggest_float(
@@ -82,7 +92,7 @@ def make_objective_BERT_cross_validation(model, tokenized_dataset, tokenizer, da
         Applies Cross Validation together with the optuna library
         """
         # Trial parameters
-        hp_space = optuna_hp_space_BERT(trial, use_focal_loss, enable_layer_freezing=enable_layer_freezing)
+        hp_space = optuna_hp_space_BERT(trial, model_name=model, use_focal_loss=use_focal_loss, enable_layer_freezing=enable_layer_freezing)
 
         # Get layer freezing parameters
         freeze_embeddings = hp_space.get("freeze_embeddings", False)

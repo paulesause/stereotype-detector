@@ -8,13 +8,13 @@ print("""
 # holdout
       """)
 BERT.finetune(
-        model="distilbert-base-uncased",
+        model="deepset/gbert-base",
         data=data,
-        hub_model_id="lwolfrat/test-ncv-focal-t-heuristic-t-freeze-t",
-        evaluation_mode="nested_cv",
-        output_dir="models/test-ncv-focal-t-heuristic-t-freeze-t",
-        n_example_sample=20,
-        use_focal_loss=True,
+        hub_model_id="lwolfrat/test-deepset-gbert-base",
+        evaluation_mode="holdout",
+        output_dir="models/test-deepset-gbert-base",
+        n_example_sample=10,
+        use_focal_loss=False,
         heursitic_filtering=True,
         enable_layer_freezing=True,
 )

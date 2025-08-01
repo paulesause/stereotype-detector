@@ -151,7 +151,7 @@ def finetune(
         best_run = trainer.hyperparameter_search(
             direction="maximize",
             backend="optuna",
-            hp_space=lambda trial: optuna_hp_space_BERT(trial, use_focal_loss=use_focal_loss),
+            hp_space=lambda trial: optuna_hp_space_BERT(trial, model_name=model, use_focal_loss=use_focal_loss, enable_layer_freezing=enable_layer_freezing),
             compute_objective=compute_objective_BERT,
             n_trials=NUMBER_OF_TRIALS
             )

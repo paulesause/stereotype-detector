@@ -63,6 +63,38 @@ def create_model_card():
     card.save(f'{MODEL_DIR_PATH}/README.md')
     print(card)
 
+def _get_backbone_and_layers(model):
+    """
+    Return (embeddings_module, list_of_layer_modules) for supported models.
+    Supports:
+      - DistilBERT: model.distilbert.embeddings, model.distilbert.transformer.layer (len=6)
+      - BERT/RoBERTa-style: model.bert.embeddings, model.bert.encoder.layer (len=12 for base)
+    """
+    # DistilBERT
+    if hasattr(model, "distilbert"):
+        embeddings = model.distilbert.embeddings
+        layers = list(model.distilbert.transformer.layer)
+        return embeddings, layers, "distilbert"
+
+    # BERT (incl. multilingual, GBERT)
+    if hasattr(model, "bert"):
+        embeddings = model.bert.embeddings
+        layers = list(model.bert.encoder.layer)
+        return embeddings, layers, "bert"
+
+    # # (Optional) add other architectures here if needed, e.g. RoBERTa:
+    # if hasattr(model, "roberta"):
+    #     embeddings = model.roberta.embeddings
+    #     layers = list(model.roberta.encoder.layer)
+    #     return embeddings, layers, "roberta"
+
+    raise ValueError(
+        "Unsupported model architecture for layer freezing. "
+        "Expected one of: distilbert, bert, roberta."
+    )
+
+
+
 # freeze layers (for Distilbert)
 def freeze_layers(model, freeze_embeddings: bool = False, num_transformer_layers_freeze: int = 0):
     """
@@ -75,14 +107,17 @@ def freeze_layers(model, freeze_embeddings: bool = False, num_transformer_layers
 
     This function modifies the model in-place by disabling gradients for the specified layers.
     """
+
+    embeddings, layers, arch = _get_backbone_and_layers(model)
+
     if freeze_embeddings:
-        for param in model.distilbert.embeddings.parameters():
+        for param in embeddings.parameters():
             param.requires_grad = False
         print("Embedding layer frozen.")
     else:
         print("Embedding layer not frozen.")
     
-    for i, layer in enumerate(model.distilbert.transformer.layer):
+    for i, layer in enumerate(layers):
         freeze = i < num_transformer_layers_freeze
         for param in layer.parameters():
             param.requires_grad = not freeze
