@@ -272,7 +272,8 @@ def finetune(
 
             # Inner CV for hyperparameter tuning
             study = optuna.create_study(direction="maximize", study_name="BERT_nested_cross_validation")
-            study.optimize(make_objective_BERT_cross_validation(model, outer_train_data, tokenizer, data_collator, use_focal_loss), n_trials=NUMBER_OF_TRIALS)
+            # study.optimize(make_objective_BERT_cross_validation(model, outer_train_data, tokenizer, data_collator, use_focal_loss), n_trials=NUMBER_OF_TRIALS)
+            study.optimize(make_objective_BERT_cross_validation(model, outer_train_data, tokenizer, data_collator, trainer_class, use_focal_loss), n_trials=NUMBER_OF_TRIALS)
 
             best_params = study.best_params
 
