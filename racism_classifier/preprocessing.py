@@ -15,7 +15,7 @@ def rescale_warm_hot_dimension(batch):
 
     cold = np.array(batch[COLD_COLUMN_NAME])
     warm = np.array(batch[WARM_COLUMN_NAME])
-    rescaled = 2 * warm + cold
+    rescaled = (2 * warm + cold).astype("int64")
 
     return {LABEL_COLUMN_NAME: rescaled.tolist()}
 

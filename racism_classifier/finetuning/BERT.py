@@ -1,6 +1,6 @@
 from transformers import AutoTokenizer, TrainingArguments, Trainer
 from transformers import DataCollatorWithPadding
-from datasets import Dataset
+from datasets import Dataset, DatasetDict, ClassLabel
 from huggingface_hub import login
 from racism_classifier.utils import load_data, get_huggingface_token,CustomTrainingArguments
 from racism_classifier.hyperparameter_optimization import make_model_init, compute_objective_BERT, optuna_hp_space_BERT, make_objective_BERT_cross_validation
@@ -9,7 +9,7 @@ from racism_classifier.evaluation import compute_evaluation_metrics
 from racism_classifier.logger.metrics_logger import JsonlMetricsLoggerCallback
 from racism_classifier.config import  LABEL_COLUMN_NAME, NUMBER_OF_TRIALS, RANDOM_STATE, TEST_SPLIT_SIZE, BATCH_SIZE
 from sklearn.model_selection import KFold
-from racism_classifier.config import  LABEL_COLUMN_NAME, NUMBER_OF_TRIALS, RANDOM_STATE, TEST_SPLIT_SIZE, BATCH_SIZE, EPOCHS, LEARNING_RATE, ALPHA, GAMMA
+from racism_classifier.config import  LABEL_COLUMN_NAME, NUMBER_OF_TRIALS, RANDOM_STATE, TEST_SPLIT_SIZE, BATCH_SIZE, EPOCHS, LEARNING_RATE, ALPHA, GAMMA, ID2LABEL_MAP, NUMBER_OF_LABELS
 from racism_classifier.utils import FocalLossTrainer
 import datetime
 import optuna
@@ -55,9 +55,26 @@ def finetune(
     # Handling imbalanced Data
     if heursitic_filtering:
         data=heuristic_filter_hf(data)
+
+    def _cast_labels_to_classlabel(ds):
+        names = [ID2LABEL_MAP[i] for i in range(NUMBER_OF_LABELS)]
+        if isinstance(ds, DatasetDict):
+            for split in ds.keys():
+                ds[split] = ds[split].cast_column(
+                    LABEL_COLUMN_NAME, ClassLabel(num_classes=NUMBER_OF_LABELS, names=names)
+                )
+            return ds
+        else:
+            return ds.cast_column(
+                LABEL_COLUMN_NAME, ClassLabel(num_classes=NUMBER_OF_LABELS, names=names)
+            )
+    
+
     # Train test split
     data = data.train_test_split(test_size=TEST_SPLIT_SIZE)
         
+    data = _cast_labels_to_classlabel(data)
+
     tokenizer = AutoTokenizer.from_pretrained(model, use_fast=True)
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 

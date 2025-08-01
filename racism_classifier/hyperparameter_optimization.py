@@ -20,7 +20,8 @@ def make_model_init(model_name: str=BERT_MODEL_NAME):
             id2label=ID2LABEL_MAP,
             label2id=LABEL2ID_MAP,
             hidden_dropout_prob=DROP_OUT_RATE,
-            attention_probs_dropout_prob=DROP_OUT_RATE
+            attention_probs_dropout_prob=DROP_OUT_RATE,
+            problem_type="single_label_classification",
         )
         return AutoModelForSequenceClassification.from_pretrained(
             model_name,
@@ -110,4 +111,3 @@ def make_objective_BERT_cross_validation(model, tokenized_dataset, tokenizer, da
         return np.mean(f1s)
 
     return objective_BERT_cross_validation
-
