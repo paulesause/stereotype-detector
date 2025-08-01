@@ -10,11 +10,12 @@ print("""
 BERT.finetune(
         model="distilbert-base-uncased",
         data=data,
-        hub_model_id="lwolfrat/test-focal-f-heuristic-f-ncv",
+        hub_model_id="lwolfrat/test-ncv-focal-t-heuristic-t-freeze-t",
         evaluation_mode="nested_cv",
-        output_dir="models/test-focal-f-heuristic-f-ncv",
+        output_dir="models/test-ncv-focal-t-heuristic-t-freeze-t",
         n_example_sample=20,
-        use_focal_loss=False,
-        heursitic_filtering=False,
+        use_focal_loss=True,
+        heursitic_filtering=True,
+        enable_layer_freezing=True,
 )
 

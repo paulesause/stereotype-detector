@@ -298,6 +298,13 @@ def finetune(
 
             best_params = study.best_params
 
+            if enable_layer_freezing:
+                freeze_embeddings = best_params.get("freeze_embeddings", False)
+                num_transformer_layers_freeze = best_params.get("num_transformer_layers_freeze", 0)
+            else:
+                freeze_embeddings = False
+                num_transformer_layers_freeze = 0
+
         #     # Train model with best params
         #     training_args = CustomTrainingArguments(
         #     output_dir=output_dir,
@@ -319,6 +326,7 @@ def finetune(
         #     load_best_model_at_end=True,
         #     save_total_limit=1
         # )
+
 
             training_args = ArgsCls(
                 output_dir=output_dir,
