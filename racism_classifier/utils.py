@@ -113,6 +113,7 @@ class FocalLossTrainer(Trainer):
         outputs = model(**inputs)
         logits = outputs.get("logits")
         loss = self.focal_loss(logits, labels)
+        print("Using FocalLoss")
         return (loss, outputs) if return_outputs else loss
         
     

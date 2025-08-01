@@ -29,6 +29,8 @@ def finetune(
 
     # Set Trainer Class to either default of custom
     trainer_class = FocalLossTrainer if use_focal_loss else Trainer
+
+    ArgsCls = CustomTrainingArguments if use_focal_loss else TrainingArguments
     # ---------------------------------------------------------------------------------------------
     # Logins
     # ---------------------------------------------------------------------------------------------
@@ -97,7 +99,23 @@ def finetune(
         train_validation = data["train"].train_test_split(test_size=TEST_SPLIT_SIZE)
         train_validation["validation"] = train_validation.pop("test")
 
-        training_args = CustomTrainingArguments(
+        # training_args = CustomTrainingArguments(
+        #     output_dir=output_dir,
+
+        #     per_device_train_batch_size=BATCH_SIZE,
+        #     per_device_eval_batch_size=BATCH_SIZE,
+        #     num_train_epochs=EPOCHS,
+        #     logging_strategy="epoch",
+        #     hub_model_id=hub_model_id,
+        #     logging_dir="logs",
+        #     load_best_model_at_end=True,
+        #     save_strategy="no",
+        #     learning_rate=LEARNING_RATE,
+        #     alpha=ALPHA,
+        #     gamma=GAMMA,
+        # )
+
+        training_args = ArgsCls(
             output_dir=output_dir,
 
             per_device_train_batch_size=BATCH_SIZE,
@@ -109,8 +127,9 @@ def finetune(
             load_best_model_at_end=True,
             save_strategy="no",
             learning_rate=LEARNING_RATE,
-            alpha=ALPHA,
-            gamma=GAMMA,
+
+            # only include these when focal is ON
+            **({"alpha": ALPHA, "gamma": GAMMA} if use_focal_loss else {})
         )
 
         trainer = trainer_class(
@@ -183,7 +202,28 @@ def finetune(
         # -------------------------------------------------------------------------------------
 
         # Train model with best params
-        training_args = CustomTrainingArguments(
+        # training_args = CustomTrainingArguments(
+        #     output_dir=output_dir,
+
+        #     per_device_train_batch_size=4,
+        #     per_device_eval_batch_size=4,
+        #     num_train_epochs=1,
+            
+        #     save_strategy="epoch",
+        #     eval_strategy="epoch",
+        #     logging_strategy="epoch",
+            
+        #     hub_model_id=hub_model_id,
+        #     logging_dir="logs",
+        #     hub_strategy="end",
+        #     hub_private_repo=True,
+        #     push_to_hub=True,
+
+        #     load_best_model_at_end=True,
+        #     save_total_limit=1
+        # )
+
+        training_args = ArgsCls(
             output_dir=output_dir,
 
             per_device_train_batch_size=4,
@@ -201,9 +241,10 @@ def finetune(
             push_to_hub=True,
 
             load_best_model_at_end=True,
-            save_total_limit=1
-        )
+            save_total_limit=1,
 
+             **({"alpha": ALPHA, "gamma": GAMMA} if use_focal_loss else {})
+        )
 
         # Set training args to best found during hyperparameter search
         for n, v in best_params.items():
@@ -235,27 +276,50 @@ def finetune(
 
             best_params = study.best_params
 
-            # Train model with best params
-            training_args = CustomTrainingArguments(
-            output_dir=output_dir,
+        #     # Train model with best params
+        #     training_args = CustomTrainingArguments(
+        #     output_dir=output_dir,
 
-            per_device_train_batch_size=4,
-            per_device_eval_batch_size=4,
-            num_train_epochs=1,
+        #     per_device_train_batch_size=4,
+        #     per_device_eval_batch_size=4,
+        #     num_train_epochs=1,
             
-            save_strategy="epoch",
-            eval_strategy="epoch",
-            logging_strategy="epoch",
+        #     save_strategy="epoch",
+        #     eval_strategy="epoch",
+        #     logging_strategy="epoch",
             
-            hub_model_id=hub_model_id,
-            logging_dir="logs",
-            hub_strategy="end",
-            hub_private_repo=True,
-            push_to_hub=True,
+        #     hub_model_id=hub_model_id,
+        #     logging_dir="logs",
+        #     hub_strategy="end",
+        #     hub_private_repo=True,
+        #     push_to_hub=True,
 
-            load_best_model_at_end=True,
-            save_total_limit=1
-        )
+        #     load_best_model_at_end=True,
+        #     save_total_limit=1
+        # )
+
+            training_args = ArgsCls(
+                output_dir=output_dir,
+
+                per_device_train_batch_size=4,
+                per_device_eval_batch_size=4,
+                num_train_epochs=1,
+                
+                save_strategy="epoch",
+                eval_strategy="epoch",
+                logging_strategy="epoch",
+                
+                hub_model_id=hub_model_id,
+                logging_dir="logs",
+                hub_strategy="end",
+                hub_private_repo=True,
+                push_to_hub=True,
+
+                load_best_model_at_end=True,
+                save_total_limit=1,
+
+                 **({"alpha": ALPHA, "gamma": GAMMA} if use_focal_loss else {})
+            )
 
             # Set training args to best found during hyperparameter search
             for n, v in best_params.items():

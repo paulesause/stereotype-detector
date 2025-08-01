@@ -10,9 +10,9 @@ print("""
 BERT.finetune(
         model="distilbert-base-uncased",
         data=data,
-        hub_model_id="lwolfrat/test-focal-f-heuristic-f",
-        evaluation_mode="holdout",
-        output_dir="models/test-focal-f-heuristic-f",
+        hub_model_id="lwolfrat/test-focal-f-heuristic-f-cv",
+        evaluation_mode="cv",
+        output_dir="models/test-focal-f-heuristic-f-cv",
         n_example_sample=10,
         use_focal_loss=False,
         heursitic_filtering=False,
