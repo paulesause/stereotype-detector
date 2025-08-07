@@ -41,7 +41,6 @@ def _max_freezable_layers(model_name: str) -> int:
         return 6
     if model_name in ("deepset/gbert-base", "bert-base-multilingual-cased"):
         return 12
-    # fallback (you can raise if you prefer to be strict)
     return 12
 
 def optuna_hp_space_BERT(trial, model_name: str, use_focal_loss: bool, enable_layer_freezing=True):

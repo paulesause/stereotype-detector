@@ -82,12 +82,6 @@ def _get_backbone_and_layers(model):
         layers = list(model.bert.encoder.layer)
         return embeddings, layers, "bert"
 
-    # # (Optional) add other architectures here if needed, e.g. RoBERTa:
-    # if hasattr(model, "roberta"):
-    #     embeddings = model.roberta.embeddings
-    #     layers = list(model.roberta.encoder.layer)
-    #     return embeddings, layers, "roberta"
-
     raise ValueError(
         "Unsupported model architecture for layer freezing. "
         "Expected one of: distilbert, bert, roberta."
@@ -178,8 +172,6 @@ class FocalLossTrainer(Trainer):
         return (loss, outputs) if return_outputs else loss
         
     
-
-
 @dataclass
 class CustomTrainingArguments(TrainingArguments):
     alpha: float = field(default=None, metadata={"help": "Alpha for focal loss"})

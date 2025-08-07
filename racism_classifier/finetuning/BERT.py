@@ -29,7 +29,7 @@ def finetune(
     # parameter check
     assert isinstance(hub_model_id, str), "paramter hub_model_id must be specified and a str."
 
-    # Set Trainer Class to either default of custom
+    # Set Trainer Class to either default or custom
     trainer_class = FocalLossTrainer if use_focal_loss else Trainer
 
     ArgsCls = CustomTrainingArguments if use_focal_loss else TrainingArguments
@@ -101,21 +101,6 @@ def finetune(
         train_validation = data["train"].train_test_split(test_size=TEST_SPLIT_SIZE)
         train_validation["validation"] = train_validation.pop("test")
 
-        # training_args = CustomTrainingArguments(
-        #     output_dir=output_dir,
-
-        #     per_device_train_batch_size=BATCH_SIZE,
-        #     per_device_eval_batch_size=BATCH_SIZE,
-        #     num_train_epochs=EPOCHS,
-        #     logging_strategy="epoch",
-        #     hub_model_id=hub_model_id,
-        #     logging_dir="logs",
-        #     load_best_model_at_end=True,
-        #     save_strategy="no",
-        #     learning_rate=LEARNING_RATE,
-        #     alpha=ALPHA,
-        #     gamma=GAMMA,
-        # )
 
         training_args = ArgsCls(
             output_dir=output_dir,
@@ -163,7 +148,6 @@ def finetune(
         for n, v in best_run.hyperparameters.items():
             if hasattr(training_args, n):
                 setattr(training_args, n, v)
-            print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
 
         # Set training agrs to savte the model to the hub
         setattr(training_args, "save_strategy", "epoch")
@@ -174,8 +158,7 @@ def finetune(
         setattr(training_args, "hub_private_repo", True)
         setattr(training_args, "push_to_hub", True)
 
-        # freeze_embeddings = best_run.hyperparameters.get("freeze_embeddings", False)
-        # num_transformer_layers_freeze = best_run.hyperparameters.get("num_transformer_layers_freeze", 0)
+        # Set layer freezing parameters if enabled
         if enable_layer_freezing:
             freeze_embeddings = best_run.hyperparameters.get("freeze_embeddings", False)
             num_transformer_layers_freeze = best_run.hyperparameters.get("num_transformer_layers_freeze", 0)
@@ -195,11 +178,6 @@ def finetune(
             callbacks=[JsonlMetricsLoggerCallback()],
             )
 
-        # Print gamma and alpha if using FocalLossTrainer
-        # if isinstance(trainer, FocalLossTrainer):
-        #     print(f"FocalLossTrainer gamma: {trainer.focal_loss.gamma}")
-        #     print(f"FocalLossTrainer alpha: {trainer.focal_loss.alpha}")
-
     elif evaluation_mode == "cv":
         # hyperparameter tuning 
         study = optuna.create_study(direction="maximize", study_name="BERT_cross_validation")
@@ -208,8 +186,7 @@ def finetune(
         best_params = study.best_params
         study_name = study.study_name
 
-        # freeze_embeddings = best_params.get("freeze_embeddings", False)
-        # num_transformer_layers_freeze = best_params.get("num_transformer_layers_freeze", 0)
+        # Set layer freezing parameters if enabled
         if enable_layer_freezing:
             freeze_embeddings = best_params.get("freeze_embeddings", False)
             num_transformer_layers_freeze = best_params.get("num_transformer_layers_freeze", 0)
@@ -220,28 +197,6 @@ def finetune(
         # -------------------------------------------------------------------------------------
         # Model Testing
         # -------------------------------------------------------------------------------------
-
-        # Train model with best params
-        # training_args = CustomTrainingArguments(
-        #     output_dir=output_dir,
-
-        #     per_device_train_batch_size=4,
-        #     per_device_eval_batch_size=4,
-        #     num_train_epochs=1,
-            
-        #     save_strategy="epoch",
-        #     eval_strategy="epoch",
-        #     logging_strategy="epoch",
-            
-        #     hub_model_id=hub_model_id,
-        #     logging_dir="logs",
-        #     hub_strategy="end",
-        #     hub_private_repo=True,
-        #     push_to_hub=True,
-
-        #     load_best_model_at_end=True,
-        #     save_total_limit=1
-        # )
 
         training_args = ArgsCls(
             output_dir=output_dir,
@@ -270,7 +225,6 @@ def finetune(
         for n, v in best_params.items():
             setattr(training_args, n, v)
 
-
         best_trainer = trainer_class(
             model=None,
             args=training_args,
@@ -298,34 +252,13 @@ def finetune(
 
             best_params = study.best_params
 
+            # set layer freezing parameters if enabled
             if enable_layer_freezing:
                 freeze_embeddings = best_params.get("freeze_embeddings", False)
                 num_transformer_layers_freeze = best_params.get("num_transformer_layers_freeze", 0)
             else:
                 freeze_embeddings = False
                 num_transformer_layers_freeze = 0
-
-        #     # Train model with best params
-        #     training_args = CustomTrainingArguments(
-        #     output_dir=output_dir,
-
-        #     per_device_train_batch_size=4,
-        #     per_device_eval_batch_size=4,
-        #     num_train_epochs=1,
-            
-        #     save_strategy="epoch",
-        #     eval_strategy="epoch",
-        #     logging_strategy="epoch",
-            
-        #     hub_model_id=hub_model_id,
-        #     logging_dir="logs",
-        #     hub_strategy="end",
-        #     hub_private_repo=True,
-        #     push_to_hub=True,
-
-        #     load_best_model_at_end=True,
-        #     save_total_limit=1
-        # )
 
 
             training_args = ArgsCls(
@@ -382,80 +315,17 @@ def finetune(
     current_time = str(datetime.datetime.now()).replace(" ", "_")
     commit_message = f"End-training-{current_time}"
 
-    # # Build a dictionary with requires_grad info for each parameter
-    # freeze_status = {
-    #     name: param.requires_grad
-    #     for name, param in best_trainer.model.named_parameters()
-    # }
-
-    # # Also include the freeze settings if available
-    # freeze_config = {
-    #     "freeze_embeddings": freeze_embeddings,
-    #     "num_transformer_layers_freeze": num_transformer_layers_freeze,
-    #     "parameter_trainability": freeze_status
-    # }
-
-    # # Save to file
-    # Path(output_dir).mkdir(parents=True, exist_ok=True)
-    # with open(f"{output_dir}/freeze_config.json", "w") as f:
-    #     json.dump(freeze_config, f, indent=4)
-
     best_trainer.push_to_hub(commit_message=commit_message)
 
-#     from dataclasses import asdict
-#     import json
-
-#     with open("training_args.json", "w") as f:
-#         json.dump(asdict(training_args), f, indent=4)
-
-#     # Print the contents of training_args.json to the console
-#     with open("training_args.json", "r") as f:
-#         print("\n--- training_args.json contents ---")
-#         print(f.read())
-
-#     card_data = ModelCardData(
-#     language='en',
-#     license='mit',
-#     library_name='transformers',
-#     tags=['text-classification', 'layer-freezing', 'bert'],
-#     base_model=model,
-#     datasets='custom',
-#     )
-
-#     freeze_description = f"""
-# ## Layer Freezing Details
-
-# - `freeze_embeddings`: {freeze_embeddings}
-# - `num_transformer_layers_freeze`: {num_transformer_layers_freeze}
-# """
-
-#     card = ModelCard.from_template(
-#     card_data,
-#     model_id=hub_model_id,
-#     model_description=f"This BERT-based classifier was fine-tuned with the following layer freezing configuration:\n{freeze_description}",
-#     )
-
-#     readme_path = Path(output_dir) / "README.md"
-#     card.save(readme_path)
-
-#     # Upload the card manually via API
-#     api = HfApi()
-#     api.upload_file(
-#     path_or_fileobj=str(readme_path),
-#     path_in_repo="README.md",
-#     repo_id=hub_model_id,
-#     repo_type="model",
-#     token=hugging_face_token,
-#     commit_message="Updating model card with freezing details"
-#     )
+    # ----- Append layer freezing information and training arguments to model card -----
 
     readme_path = Path(output_dir) / "README.md"
 
-    # 1) Load the auto-generated README (keeps metrics, tables, etc.)
+    # Load the auto-generated README 
     with open(readme_path, "r", encoding="utf-8") as f:
         card_text = f.read()
 
-    # 2) Build sections to append
+    # Build sections to append
     freeze_section = f"""
 ## 🔒 Layer Freezing
 
@@ -470,17 +340,17 @@ def finetune(
         from dataclasses import asdict
         ta = asdict(training_args)
 
-    # Scrub any secrets
+    # Remove token-related fields from TrainingArguments
     ta = {k: v for k, v in ta.items() if "token" not in k.lower()}
 
     training_args_section = "## ⚙️ TrainingArguments\n\n```json\n" + json.dumps(ta, indent=2, default=str) + "\n```"
 
     evaluation_section = "## 📊 Evaluation (from script)\n\n```json\n" + json.dumps(best_results, indent=2, default=str) + "\n```"
 
-    # 3) Merge your sections **after** the autogenerated content
+    # Merge the sections after the autogenerated content
     merged = card_text.rstrip() + "\n\n" + freeze_section + "\n\n" + training_args_section + "\n\n" + evaluation_section + "\n"
 
-    # 4) Save and upload only README.md to overwrite the one on the Hub
+    # Save and upload only README.md to overwrite the one on the Hub
     with open(readme_path, "w", encoding="utf-8") as f:
         f.write(merged)
 
