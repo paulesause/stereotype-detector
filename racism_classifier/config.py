@@ -9,7 +9,7 @@ LABEL_COLUMN_NAME = "labels"  # Do not change this name. Tranformers excpect the
 
 # Paths
 MODEL_DIR_PATH = "models"
-DATA_PATH = "data/sample_parahraphs_1200.xlsx"
+DATA_PATH = "data/sample_paragraphs_1200.xlsx"
 
 # DATA Lables
 ID2LABEL_MAP = {
