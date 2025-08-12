@@ -21,11 +21,37 @@ def finetune(
         output_dir:str,
         hub_model_id: str,
         evaluation_mode: str = "holdout",
+        use_default_hyperparameters = False,
         n_example_sample:int = None,
         heursitic_filtering: bool = False,
         use_focal_loss: bool = False,
         enable_layer_freezing: bool = True,
 ):
+    
+    """
+    Fine-tunes a transformer model on a given dataset, with optional hyperparameter tuning.
+
+    Args:
+        model (str): Name or path of the Hugging Face model to fine-tune.
+        data (Dataset): A Hugging Face `datasets.Dataset` or `DatasetDict` containing the training data.
+        output_dir (str): Path to save the model and results.
+        hub_model_id (str): Hugging Face Hub model repository ID.
+        evaluation_mode (str, optional): One of {"holdout", "cv", "nested_cv"}.
+            Determines the evaluation strategy. Defaults to "holdout".
+        n_example_sample (int, optional): If provided, samples this many examples from the dataset.
+        heuristic_filtering (bool, optional): Whether to apply heuristic filtering to the dataset.
+        use_focal_loss (bool, optional): Whether to use focal loss instead of cross-entropy.
+        enable_layer_freezing (bool, optional): Whether to freeze embedding and transformer layers during training.
+        use_default_hyperparameters (bool, optional): If True, uses hyperparameters as suggested by Jumle et al. (2025). 
+            Although Jumle et al. (2025) employed dynamic warmup steps and cosine
+            annealing, these features are not available in the Transformers library and ommitted with this parameter.
+            
+            Jumle, V., Makhortykh, M., Sydorova, M., & Vziatysheva, V. (2025). 
+            Finding Frames With BERT: A Transformer-Based Approach to Generic News Frame Detection. 
+            Social Science Computer Review. https://doi.org/10.1177/08944393251338396
+
+    """
+
     # parameter check
     assert isinstance(hub_model_id, str), "paramter hub_model_id must be specified and a str."
 
@@ -95,8 +121,52 @@ def finetune(
     # Fine-Tuning
     # -------------------------------------------------------------------------------------------
 
+    if use_default_hyperparameters:
+        print("--- using default hyperparameters --- \n")
+
+        enable_layer_freezing = False
+        num_transformer_layers_freeze = 0
+        heursitic_filtering = False,
+        use_focal_loss = True
+
+        training_args = ArgsCls(
+            output_dir=output_dir,
+
+            per_device_train_batch_size=BATCH_SIZE,
+            per_device_eval_batch_size=BATCH_SIZE,
+            num_train_epochs=EPOCHS,
+            
+            save_strategy="epoch",
+            eval_strategy="epoch",
+            logging_strategy="epoch",
+            
+            hub_model_id=hub_model_id,
+            logging_dir="logs",
+            hub_strategy="end",
+            hub_private_repo=True,
+            push_to_hub=True,
+
+            load_best_model_at_end=True,
+            save_total_limit=1,
+
+             **({"alpha": ALPHA, "gamma": GAMMA} if use_focal_loss else {})
+        )
+
+        best_trainer = trainer_class(
+            model=None,
+            args=training_args,
+            train_dataset=data["train"],
+            eval_dataset=data["test"],
+            tokenizer=tokenizer,
+            model_init=make_model_init(model, freeze_embeddings, num_transformer_layers_freeze),
+            data_collator=data_collator,
+            compute_metrics=compute_evaluation_metrics,
+            callbacks=[JsonlMetricsLoggerCallback()]
+        )
+
+
     # Hyperparameter Tuning
-    if evaluation_mode == "holdout":
+    elif evaluation_mode == "holdout":
         # train-evaluation split
         train_validation = data["train"].train_test_split(test_size=TEST_SPLIT_SIZE)
         train_validation["validation"] = train_validation.pop("test")
