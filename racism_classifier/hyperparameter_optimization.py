@@ -8,7 +8,6 @@ from transformers import (
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
 from racism_classifier.config import (
-    BERT_MODEL_NAME,
     NUMBER_OF_LABELS,
     ID2LABEL_MAP,
     LABEL2ID_MAP,
@@ -23,7 +22,7 @@ from racism_classifier.utils import freeze_layers
 
 
 def make_model_init(
-    model_name: str = BERT_MODEL_NAME,
+    model_name: str = None,
     freeze_embeddings: bool = False,
     num_transformer_layers_freeze: int = 0,
 ):
