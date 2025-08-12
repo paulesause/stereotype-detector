@@ -19,7 +19,7 @@ git clone https://github.com/paulesause/racism_classifier
 virtualenv venv
 ```
 
-2.Activate virtualenvironment 
+2. Activate virtualenvironment 
 
 ```bash
 source venv/bin/activate
