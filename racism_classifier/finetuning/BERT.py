@@ -159,8 +159,8 @@ def finetune(
         use_focal_loss = True
 
         trainer_class = FocalLossTrainer
-        trainer_class = FocalLossTrainer
-
+        ArgsCls = CustomTrainingArguments
+        
         training_args = ArgsCls(
             output_dir=output_dir,
             per_device_train_batch_size=BATCH_SIZE,
