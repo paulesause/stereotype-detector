@@ -153,6 +153,7 @@ def finetune(
     if use_default_hyperparameters:
         print("--- using default hyperparameters --- \n")
 
+        freeze_embeddings = False
         enable_layer_freezing = False
         num_transformer_layers_freeze = 0
         heursitic_filtering = False
@@ -160,7 +161,7 @@ def finetune(
 
         trainer_class = FocalLossTrainer
         ArgsCls = CustomTrainingArguments
-        
+
         training_args = ArgsCls(
             output_dir=output_dir,
             per_device_train_batch_size=BATCH_SIZE,
