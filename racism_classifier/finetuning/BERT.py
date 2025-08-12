@@ -158,6 +158,9 @@ def finetune(
         heursitic_filtering = False
         use_focal_loss = True
 
+        trainer_class = FocalLossTrainer
+        trainer_class = FocalLossTrainer
+
         training_args = ArgsCls(
             output_dir=output_dir,
             per_device_train_batch_size=BATCH_SIZE,
