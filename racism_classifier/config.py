@@ -1,6 +1,3 @@
-# Model Names
-BERT_MODEL_NAME = "distilbert-base-uncased"
-
 # Column Names
 TEXT_COLUMN_NAME = "text_block"
 COLD_COLUMN_NAME = "cold"

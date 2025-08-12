@@ -18,26 +18,13 @@ def load_data(file_path: str = DATA_PATH):
     return Dataset.from_pandas(df)
 
 
-# Load tokenizer
-_tokenizer = None
+# Load huggingface user name
+_hugging_face_user_name = None
 
-
-def get_tokenizer_from_huggingface():
-    global _tokenizer
-    if _tokenizer is None:
-        hugging_face_repro = get_huggingface_repro()
-        _tokenizer = AutoTokenizer.from_pretrained(hugging_face_repro)
-    return _tokenizer
-
-
-# Load huggingface repro name
-_hugging_face_repro = None
-
-
-def get_huggingface_repro():
-    global _hugging_face_repro
-    if _hugging_face_repro == None:
-        _hugging_face_repro = os.getenv("HUGGING_FACE_BERT_MODEL_REPRO")
+def get_huggingface_user_name():
+    global _hugging_face_user_name
+    if _hugging_face_user_name == None:
+        _hugging_face_repro = os.getenv("HUGGING_FACE_USER_NAME")
     return _hugging_face_repro
 
 
