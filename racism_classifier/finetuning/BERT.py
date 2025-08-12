@@ -1,33 +1,58 @@
 from transformers import AutoTokenizer, TrainingArguments, Trainer
 from transformers import DataCollatorWithPadding
 from datasets import Dataset, DatasetDict, ClassLabel
-from racism_classifier.utils import load_data, get_huggingface_token,CustomTrainingArguments
+from racism_classifier.utils import (
+    load_data,
+    get_huggingface_token,
+    CustomTrainingArguments,
+)
 from huggingface_hub import login, ModelCard, ModelCardData, HfApi
-from racism_classifier.hyperparameter_optimization import make_model_init, compute_objective_BERT, optuna_hp_space_BERT, make_objective_BERT_cross_validation
-from racism_classifier.preprocessing import rescale_warm_hot_dimension, tokenize, heuristic_filter_hf
+from racism_classifier.hyperparameter_optimization import (
+    make_model_init,
+    compute_objective_BERT,
+    optuna_hp_space_BERT,
+    make_objective_BERT_cross_validation,
+)
+from racism_classifier.preprocessing import (
+    rescale_warm_hot_dimension,
+    tokenize,
+    heuristic_filter_hf,
+)
 from racism_classifier.evaluation import compute_evaluation_metrics
 from racism_classifier.logger.metrics_logger import JsonlMetricsLoggerCallback
 from sklearn.model_selection import KFold
-from racism_classifier.config import  LABEL_COLUMN_NAME, NUMBER_OF_TRIALS, RANDOM_STATE, TEST_SPLIT_SIZE, BATCH_SIZE, EPOCHS, LEARNING_RATE, ALPHA, GAMMA, ID2LABEL_MAP, NUMBER_OF_LABELS
+from racism_classifier.config import (
+    LABEL_COLUMN_NAME,
+    NUMBER_OF_TRIALS,
+    RANDOM_STATE,
+    TEST_SPLIT_SIZE,
+    BATCH_SIZE,
+    EPOCHS,
+    LEARNING_RATE,
+    ALPHA,
+    GAMMA,
+    ID2LABEL_MAP,
+    NUMBER_OF_LABELS,
+)
 from racism_classifier.utils import FocalLossTrainer
 import datetime
 import optuna
 import json
 from pathlib import Path
 
+
 def finetune(
-        model:str,
-        data: Dataset,
-        output_dir:str,
-        hub_model_id: str,
-        evaluation_mode: str = "holdout",
-        use_default_hyperparameters = False,
-        n_example_sample:int = None,
-        heursitic_filtering: bool = False,
-        use_focal_loss: bool = False,
-        enable_layer_freezing: bool = True,
+    model: str,
+    data: Dataset,
+    output_dir: str,
+    hub_model_id: str,
+    evaluation_mode: str = "holdout",
+    use_default_hyperparameters=False,
+    n_example_sample: int = None,
+    heursitic_filtering: bool = False,
+    use_focal_loss: bool = False,
+    enable_layer_freezing: bool = True,
 ):
-    
     """
     Fine-tunes a transformer model on a given dataset, with optional hyperparameter tuning.
 
@@ -42,18 +67,20 @@ def finetune(
         heuristic_filtering (bool, optional): Whether to apply heuristic filtering to the dataset.
         use_focal_loss (bool, optional): Whether to use focal loss instead of cross-entropy.
         enable_layer_freezing (bool, optional): Whether to freeze embedding and transformer layers during training.
-        use_default_hyperparameters (bool, optional): If True, uses hyperparameters as suggested by Jumle et al. (2025). 
+        use_default_hyperparameters (bool, optional): If True, uses hyperparameters as suggested by Jumle et al. (2025).
             Although Jumle et al. (2025) employed dynamic warmup steps and cosine
             annealing, these features are not available in the Transformers library and ommitted with this parameter.
-            
-            Jumle, V., Makhortykh, M., Sydorova, M., & Vziatysheva, V. (2025). 
-            Finding Frames With BERT: A Transformer-Based Approach to Generic News Frame Detection. 
+
+            Jumle, V., Makhortykh, M., Sydorova, M., & Vziatysheva, V. (2025).
+            Finding Frames With BERT: A Transformer-Based Approach to Generic News Frame Detection.
             Social Science Computer Review. https://doi.org/10.1177/08944393251338396
 
     """
 
     # parameter check
-    assert isinstance(hub_model_id, str), "paramter hub_model_id must be specified and a str."
+    assert isinstance(
+        hub_model_id, str
+    ), "paramter hub_model_id must be specified and a str."
 
     # Set Trainer Class to either default or custom
     trainer_class = FocalLossTrainer if use_focal_loss else Trainer
@@ -79,43 +106,46 @@ def finetune(
     # ----------------------------------------------------------------------------------------------
 
     # Rescaling hot warm dimension
-    
-    data = data.map(rescale_warm_hot_dimension)#, batch=True)
-    
+
+    data = data.map(rescale_warm_hot_dimension)  # , batch=True)
+
     # Handling imbalanced Data
     if heursitic_filtering:
-        data=heuristic_filter_hf(data)
+        data = heuristic_filter_hf(data)
 
     def _cast_labels_to_classlabel(ds):
         names = [ID2LABEL_MAP[i] for i in range(NUMBER_OF_LABELS)]
         if isinstance(ds, DatasetDict):
             for split in ds.keys():
                 ds[split] = ds[split].cast_column(
-                    LABEL_COLUMN_NAME, ClassLabel(num_classes=NUMBER_OF_LABELS, names=names)
+                    LABEL_COLUMN_NAME,
+                    ClassLabel(num_classes=NUMBER_OF_LABELS, names=names),
                 )
             return ds
         else:
             return ds.cast_column(
                 LABEL_COLUMN_NAME, ClassLabel(num_classes=NUMBER_OF_LABELS, names=names)
             )
-    
 
     # Train test split
     data = data.train_test_split(test_size=TEST_SPLIT_SIZE)
-        
+
     data = _cast_labels_to_classlabel(data)
 
     tokenizer = AutoTokenizer.from_pretrained(model, use_fast=True)
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
     columns_to_keep = [LABEL_COLUMN_NAME]
-    columns_to_remove = [col for col in data["train"].column_names if col not in columns_to_keep]
+    columns_to_remove = [
+        col for col in data["train"].column_names if col not in columns_to_keep
+    ]
 
-    data = data.map(tokenize(tokenizer),
-                    batched=True,
-                    batch_size=BATCH_SIZE,
-                    remove_columns=columns_to_remove
-                    )
+    data = data.map(
+        tokenize(tokenizer),
+        batched=True,
+        batch_size=BATCH_SIZE,
+        remove_columns=columns_to_remove,
+    )
 
     # -------------------------------------------------------------------------------------------
     # Fine-Tuning
@@ -126,30 +156,25 @@ def finetune(
 
         enable_layer_freezing = False
         num_transformer_layers_freeze = 0
-        heursitic_filtering = False,
+        heursitic_filtering = (False,)
         use_focal_loss = True
 
         training_args = ArgsCls(
             output_dir=output_dir,
-
             per_device_train_batch_size=BATCH_SIZE,
             per_device_eval_batch_size=BATCH_SIZE,
             num_train_epochs=EPOCHS,
-            
             save_strategy="epoch",
             eval_strategy="epoch",
             logging_strategy="epoch",
-            
             hub_model_id=hub_model_id,
             logging_dir="logs",
             hub_strategy="end",
             hub_private_repo=True,
             push_to_hub=True,
-
             load_best_model_at_end=True,
             save_total_limit=1,
-
-             **({"alpha": ALPHA, "gamma": GAMMA} if use_focal_loss else {})
+            **({"alpha": ALPHA, "gamma": GAMMA} if use_focal_loss else {}),
         )
 
         best_trainer = trainer_class(
@@ -158,12 +183,13 @@ def finetune(
             train_dataset=data["train"],
             eval_dataset=data["test"],
             tokenizer=tokenizer,
-            model_init=make_model_init(model, freeze_embeddings, num_transformer_layers_freeze),
+            model_init=make_model_init(
+                model, freeze_embeddings, num_transformer_layers_freeze
+            ),
             data_collator=data_collator,
             compute_metrics=compute_evaluation_metrics,
-            callbacks=[JsonlMetricsLoggerCallback()]
+            callbacks=[JsonlMetricsLoggerCallback()],
         )
-
 
     # Hyperparameter Tuning
     elif evaluation_mode == "holdout":
@@ -171,10 +197,8 @@ def finetune(
         train_validation = data["train"].train_test_split(test_size=TEST_SPLIT_SIZE)
         train_validation["validation"] = train_validation.pop("test")
 
-
         training_args = ArgsCls(
             output_dir=output_dir,
-
             per_device_train_batch_size=BATCH_SIZE,
             per_device_eval_batch_size=BATCH_SIZE,
             num_train_epochs=EPOCHS,
@@ -184,9 +208,8 @@ def finetune(
             load_best_model_at_end=True,
             save_strategy="no",
             learning_rate=LEARNING_RATE,
-
             # only include these when focal is ON
-            **({"alpha": ALPHA, "gamma": GAMMA} if use_focal_loss else {})
+            **({"alpha": ALPHA, "gamma": GAMMA} if use_focal_loss else {}),
         )
 
         trainer = trainer_class(
@@ -206,10 +229,15 @@ def finetune(
         best_run = trainer.hyperparameter_search(
             direction="maximize",
             backend="optuna",
-            hp_space=lambda trial: optuna_hp_space_BERT(trial, model_name=model, use_focal_loss=use_focal_loss, enable_layer_freezing=enable_layer_freezing),
+            hp_space=lambda trial: optuna_hp_space_BERT(
+                trial,
+                model_name=model,
+                use_focal_loss=use_focal_loss,
+                enable_layer_freezing=enable_layer_freezing,
+            ),
             compute_objective=compute_objective_BERT,
-            n_trials=NUMBER_OF_TRIALS
-            )
+            n_trials=NUMBER_OF_TRIALS,
+        )
         # -------------------------------------------------------------------------------------
         # Model Testing
         # -------------------------------------------------------------------------------------
@@ -231,7 +259,9 @@ def finetune(
         # Set layer freezing parameters if enabled
         if enable_layer_freezing:
             freeze_embeddings = best_run.hyperparameters.get("freeze_embeddings", False)
-            num_transformer_layers_freeze = best_run.hyperparameters.get("num_transformer_layers_freeze", 0)
+            num_transformer_layers_freeze = best_run.hyperparameters.get(
+                "num_transformer_layers_freeze", 0
+            )
         else:
             freeze_embeddings = False
             num_transformer_layers_freeze = 0
@@ -242,16 +272,31 @@ def finetune(
             train_dataset=data["train"],
             eval_dataset=data["test"],
             tokenizer=tokenizer,
-            model_init=make_model_init(model, freeze_embeddings, num_transformer_layers_freeze),
+            model_init=make_model_init(
+                model, freeze_embeddings, num_transformer_layers_freeze
+            ),
             data_collator=data_collator,
             compute_metrics=compute_evaluation_metrics,
             callbacks=[JsonlMetricsLoggerCallback()],
-            )
+        )
 
     elif evaluation_mode == "cv":
-        # hyperparameter tuning 
-        study = optuna.create_study(direction="maximize", study_name="BERT_cross_validation")
-        study.optimize(make_objective_BERT_cross_validation(model, data["train"], tokenizer, data_collator, trainer_class, use_focal_loss, enable_layer_freezing=enable_layer_freezing), n_trials=NUMBER_OF_TRIALS)
+        # hyperparameter tuning
+        study = optuna.create_study(
+            direction="maximize", study_name="BERT_cross_validation"
+        )
+        study.optimize(
+            make_objective_BERT_cross_validation(
+                model,
+                data["train"],
+                tokenizer,
+                data_collator,
+                trainer_class,
+                use_focal_loss,
+                enable_layer_freezing=enable_layer_freezing,
+            ),
+            n_trials=NUMBER_OF_TRIALS,
+        )
 
         best_params = study.best_params
         study_name = study.study_name
@@ -259,7 +304,9 @@ def finetune(
         # Set layer freezing parameters if enabled
         if enable_layer_freezing:
             freeze_embeddings = best_params.get("freeze_embeddings", False)
-            num_transformer_layers_freeze = best_params.get("num_transformer_layers_freeze", 0)
+            num_transformer_layers_freeze = best_params.get(
+                "num_transformer_layers_freeze", 0
+            )
         else:
             freeze_embeddings = False
             num_transformer_layers_freeze = 0
@@ -270,25 +317,20 @@ def finetune(
 
         training_args = ArgsCls(
             output_dir=output_dir,
-
             per_device_train_batch_size=4,
             per_device_eval_batch_size=4,
             num_train_epochs=1,
-            
             save_strategy="epoch",
             eval_strategy="epoch",
             logging_strategy="epoch",
-            
             hub_model_id=hub_model_id,
             logging_dir="logs",
             hub_strategy="end",
             hub_private_repo=True,
             push_to_hub=True,
-
             load_best_model_at_end=True,
             save_total_limit=1,
-
-             **({"alpha": ALPHA, "gamma": GAMMA} if use_focal_loss else {})
+            **({"alpha": ALPHA, "gamma": GAMMA} if use_focal_loss else {}),
         )
 
         # Set training args to best found during hyperparameter search
@@ -301,14 +343,15 @@ def finetune(
             train_dataset=data["train"],
             eval_dataset=data["test"],
             tokenizer=tokenizer,
-            model_init=make_model_init(model, freeze_embeddings, num_transformer_layers_freeze),
+            model_init=make_model_init(
+                model, freeze_embeddings, num_transformer_layers_freeze
+            ),
             data_collator=data_collator,
             compute_metrics=compute_evaluation_metrics,
-            callbacks=[JsonlMetricsLoggerCallback()]
+            callbacks=[JsonlMetricsLoggerCallback()],
         )
 
     elif evaluation_mode == "nested_cv":
-
         outer_k = 5
         kf_outer = KFold(n_splits=outer_k, shuffle=True, random_state=RANDOM_STATE)
         all_outer_scores = []
@@ -317,41 +360,50 @@ def finetune(
             outer_test_data = data["train"].select(outer_test_index)
 
             # Inner CV for hyperparameter tuning
-            study = optuna.create_study(direction="maximize", study_name="BERT_nested_cross_validation")
-            study.optimize(make_objective_BERT_cross_validation(model, outer_train_data, tokenizer, data_collator, trainer_class, use_focal_loss, enable_layer_freezing=enable_layer_freezing), n_trials=NUMBER_OF_TRIALS)
+            study = optuna.create_study(
+                direction="maximize", study_name="BERT_nested_cross_validation"
+            )
+            study.optimize(
+                make_objective_BERT_cross_validation(
+                    model,
+                    outer_train_data,
+                    tokenizer,
+                    data_collator,
+                    trainer_class,
+                    use_focal_loss,
+                    enable_layer_freezing=enable_layer_freezing,
+                ),
+                n_trials=NUMBER_OF_TRIALS,
+            )
 
             best_params = study.best_params
 
             # set layer freezing parameters if enabled
             if enable_layer_freezing:
                 freeze_embeddings = best_params.get("freeze_embeddings", False)
-                num_transformer_layers_freeze = best_params.get("num_transformer_layers_freeze", 0)
+                num_transformer_layers_freeze = best_params.get(
+                    "num_transformer_layers_freeze", 0
+                )
             else:
                 freeze_embeddings = False
                 num_transformer_layers_freeze = 0
 
-
             training_args = ArgsCls(
                 output_dir=output_dir,
-
                 per_device_train_batch_size=4,
                 per_device_eval_batch_size=4,
                 num_train_epochs=1,
-                
                 save_strategy="epoch",
                 eval_strategy="epoch",
                 logging_strategy="epoch",
-                
                 hub_model_id=hub_model_id,
                 logging_dir="logs",
                 hub_strategy="end",
                 hub_private_repo=True,
                 push_to_hub=True,
-
                 load_best_model_at_end=True,
                 save_total_limit=1,
-
-                 **({"alpha": ALPHA, "gamma": GAMMA} if use_focal_loss else {})
+                **({"alpha": ALPHA, "gamma": GAMMA} if use_focal_loss else {}),
             )
 
             # Set training args to best found during hyperparameter search
@@ -364,14 +416,18 @@ def finetune(
                 train_dataset=data["train"],
                 eval_dataset=data["test"],
                 tokenizer=tokenizer,
-                model_init=make_model_init(model, freeze_embeddings, num_transformer_layers_freeze),
+                model_init=make_model_init(
+                    model, freeze_embeddings, num_transformer_layers_freeze
+                ),
                 data_collator=data_collator,
                 compute_metrics=compute_evaluation_metrics,
-                callbacks=[JsonlMetricsLoggerCallback()]
+                callbacks=[JsonlMetricsLoggerCallback()],
             )
     else:
-        raise ValueError("Unsupported evaluation_mode parameter. Chose either 'holdout' or 'cv'.")
-    
+        raise ValueError(
+            "Unsupported evaluation_mode parameter. Chose either 'holdout' or 'cv'."
+        )
+
     # Train with best hyperparmeters
     print("--- Train with best hyperparameters ---\n")
     best_trainer.train()
@@ -391,7 +447,7 @@ def finetune(
 
     readme_path = Path(output_dir) / "README.md"
 
-    # Load the auto-generated README 
+    # Load the auto-generated README
     with open(readme_path, "r", encoding="utf-8") as f:
         card_text = f.read()
 
@@ -408,17 +464,35 @@ def finetune(
         ta = training_args.to_dict()
     except Exception:
         from dataclasses import asdict
+
         ta = asdict(training_args)
 
     # Remove token-related fields from TrainingArguments
     ta = {k: v for k, v in ta.items() if "token" not in k.lower()}
 
-    training_args_section = "## ⚙️ TrainingArguments\n\n```json\n" + json.dumps(ta, indent=2, default=str) + "\n```"
+    training_args_section = (
+        "## ⚙️ TrainingArguments\n\n```json\n"
+        + json.dumps(ta, indent=2, default=str)
+        + "\n```"
+    )
 
-    evaluation_section = "## 📊 Evaluation (from script)\n\n```json\n" + json.dumps(best_results, indent=2, default=str) + "\n```"
+    evaluation_section = (
+        "## 📊 Evaluation (from script)\n\n```json\n"
+        + json.dumps(best_results, indent=2, default=str)
+        + "\n```"
+    )
 
     # Merge the sections after the autogenerated content
-    merged = card_text.rstrip() + "\n\n" + freeze_section + "\n\n" + training_args_section + "\n\n" + evaluation_section + "\n"
+    merged = (
+        card_text.rstrip()
+        + "\n\n"
+        + freeze_section
+        + "\n\n"
+        + training_args_section
+        + "\n\n"
+        + evaluation_section
+        + "\n"
+    )
 
     # Save and upload only README.md to overwrite the one on the Hub
     with open(readme_path, "w", encoding="utf-8") as f:
@@ -430,5 +504,5 @@ def finetune(
         repo_id=hub_model_id,
         repo_type="model",
         token=hugging_face_token,
-        commit_message="Append layer-freezing + TrainingArguments + eval to model card"
+        commit_message="Append layer-freezing + TrainingArguments + eval to model card",
     )

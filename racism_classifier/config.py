@@ -8,15 +8,25 @@ WARM_COLUMN_NAME = "warm"
 ARTICLE_ID_COLUMN_NAME = "article_id"
 PUB_COLUMN_NAME = "pub"
 PAR_INDEX_NAME = "par_index"
-LABEL_COLUMN_NAME = "labels" # Do not change this name. Tranformers excpect them column with the labels named "labels"
+LABEL_COLUMN_NAME = "labels"  # Do not change this name. Tranformers excpect them column with the labels named "labels"
 
 # Paths
 MODEL_DIR_PATH = "models"
 DATA_PATH = "data/sample_parahraphs_1200.xlsx"
 
 # DATA Lables
-ID2LABEL_MAP = {0: "cold = 0 AND warm = 0", 1: "cold = 1 AND warm = 0", 2: "cold = 0 AND warm = 1", 3: "cold = 1 AND warm = 1"}
-LABEL2ID_MAP = {"cold = 0 AND warm = 0": 0, "cold = 1 AND warm = 0": 1, "cold = 0 AND warm = 1": 2, "cold = 1 AND warm = 1": 3}
+ID2LABEL_MAP = {
+    0: "cold = 0 AND warm = 0",
+    1: "cold = 1 AND warm = 0",
+    2: "cold = 0 AND warm = 1",
+    3: "cold = 1 AND warm = 1",
+}
+LABEL2ID_MAP = {
+    "cold = 0 AND warm = 0": 0,
+    "cold = 1 AND warm = 0": 1,
+    "cold = 0 AND warm = 1": 2,
+    "cold = 1 AND warm = 1": 3,
+}
 NUMBER_OF_LABELS = 4
 
 # Evaluation
@@ -26,13 +36,13 @@ TEST_SPLIT_SIZE = 0.2
 BATCH_SIZE = 16
 EPOCHS = 3
 LEARNING_RATE = 1e-5
-ALPHA=None
-GAMMA=3.0
+ALPHA = None
+GAMMA = 3.0
 
 # Hyperparamter Search
 NUMBER_OF_TRIALS = 2
-RANDOM_STATE=42
-NUMBER_CROSS_VALIDATION_FOLDS=3
+RANDOM_STATE = 42
+NUMBER_CROSS_VALIDATION_FOLDS = 3
 DROP_OUT_RATE = 0.3
 
 # Hyperparameter space
@@ -43,12 +53,12 @@ HYPERPARAMETER_SPACE_BASE = {
     "num_train_epochs": {"type": "int", "low": 1, "high": 2},
     "warmup_steps": {"type": "int", "low": 1, "high": 100},
     "freeze_embeddings": {"type": "bool"},
-    "num_transformer_layers_freeze": {"type": "int", "low": 0, "high": 6}
+    "num_transformer_layers_freeze": {"type": "int", "low": 0, "high": 6},
 }
 
 # Focal-loss extension
 HYPERPARAMETER_SPACE_FOCAL = {
     **HYPERPARAMETER_SPACE_BASE,
     "gamma": {"type": "float", "low": 0.1, "high": 5.0, "log": True},
-    "alpha": {"type": "float", "low": 0.1, "high": 1.0, "log": True}
+    "alpha": {"type": "float", "low": 0.1, "high": 1.0, "log": True},
 }
