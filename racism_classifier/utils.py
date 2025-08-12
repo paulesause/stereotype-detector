@@ -44,7 +44,7 @@ def get_huggingface_token():
 
 def create_model_card():
     card_data = ModelCardData(
-        language="en", base_model=BERT_MODEL_NAME, datasets="Dataset from Rainer"
+        language="en", base_model="base_model", datasets="Dataset from Rainer"
     )
 
     card = ModelCard.from_template(
