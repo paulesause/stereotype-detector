@@ -27,7 +27,7 @@ BATCH_SIZE = 16
 EPOCHS = 3
 LEARNING_RATE = 1e-5
 ALPHA=None
-GAMMA=2.0
+GAMMA=3.0
 
 # Hyperparamter Search
 NUMBER_OF_TRIALS = 2
