@@ -2,11 +2,10 @@ from transformers import AutoTokenizer, TrainingArguments, Trainer
 from transformers import DataCollatorWithPadding
 from datasets import Dataset, DatasetDict, ClassLabel
 from racism_classifier.utils import (
-    load_data,
     get_huggingface_token,
     CustomTrainingArguments,
 )
-from huggingface_hub import login, ModelCard, ModelCardData, HfApi
+from huggingface_hub import login, HfApi
 from racism_classifier.hyperparameter_optimization import (
     make_model_init,
     compute_objective_BERT,
@@ -156,7 +155,7 @@ def finetune(
 
         enable_layer_freezing = False
         num_transformer_layers_freeze = 0
-        heursitic_filtering = (False,)
+        heursitic_filtering = False
         use_focal_loss = True
 
         training_args = ArgsCls(
