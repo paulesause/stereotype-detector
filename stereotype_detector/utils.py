@@ -1,6 +1,6 @@
 import pandas as pd
 from datasets import Dataset
-from racism_classifier.config import DATA_PATH, MODEL_DIR_PATH
+from stereotype_detector.config import DATA_PATH, MODEL_DIR_PATH
 from transformers import Trainer, TrainingArguments
 from huggingface_hub import ModelCardData, ModelCard
 from dotenv import load_dotenv

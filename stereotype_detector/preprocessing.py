@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from racism_classifier.config import (
+from stereotype_detector.config import (
     TEXT_COLUMN_NAME,
     COLD_COLUMN_NAME,
     WARM_COLUMN_NAME,

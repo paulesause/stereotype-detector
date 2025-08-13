@@ -1,5 +1,5 @@
-from racism_classifier.finetuning import BERT
-from racism_classifier.utils import load_data
+from stereotype_detector.finetuning import BERT
+from stereotype_detector.utils import load_data
 
 data = load_data("data/holdout.xlsx")
 

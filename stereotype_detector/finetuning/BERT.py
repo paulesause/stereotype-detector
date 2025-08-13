@@ -1,26 +1,26 @@
 from transformers import AutoTokenizer, TrainingArguments, Trainer
 from transformers import DataCollatorWithPadding
 from datasets import Dataset, DatasetDict, ClassLabel
-from racism_classifier.utils import (
+from stereotype_detector.utils import (
     get_huggingface_token,
     CustomTrainingArguments,
 )
 from huggingface_hub import login, HfApi
-from racism_classifier.hyperparameter_optimization import (
+from stereotype_detector.hyperparameter_optimization import (
     make_model_init,
     compute_objective_BERT,
     optuna_hp_space_BERT,
     make_objective_BERT_cross_validation,
 )
-from racism_classifier.preprocessing import (
+from stereotype_detector.preprocessing import (
     rescale_warm_hot_dimension,
     tokenize,
     heuristic_filter_hf,
 )
-from racism_classifier.evaluation import compute_evaluation_metrics
-from racism_classifier.logger.metrics_logger import JsonlMetricsLoggerCallback
+from stereotype_detector.evaluation import compute_evaluation_metrics
+from stereotype_detector.logger.metrics_logger import JsonlMetricsLoggerCallback
 from sklearn.model_selection import KFold
-from racism_classifier.config import (
+from stereotype_detector.config import (
     LABEL_COLUMN_NAME,
     NUMBER_OF_TRIALS,
     RANDOM_STATE,
@@ -33,7 +33,7 @@ from racism_classifier.config import (
     ID2LABEL_MAP,
     NUMBER_OF_LABELS,
 )
-from racism_classifier.utils import FocalLossTrainer
+from stereotype_detector.utils import FocalLossTrainer
 import datetime
 import optuna
 import json

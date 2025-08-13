@@ -7,7 +7,7 @@ from transformers import (
 
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
-from racism_classifier.config import (
+from stereotype_detector.config import (
     NUMBER_OF_LABELS,
     ID2LABEL_MAP,
     LABEL2ID_MAP,
@@ -17,8 +17,8 @@ from racism_classifier.config import (
     HYPERPARAMETER_SPACE_BASE,
     HYPERPARAMETER_SPACE_FOCAL,
 )
-from racism_classifier.evaluation import compute_evaluation_metrics
-from racism_classifier.utils import freeze_layers
+from stereotype_detector.evaluation import compute_evaluation_metrics
+from stereotype_detector.utils import freeze_layers
 
 
 def make_model_init(
