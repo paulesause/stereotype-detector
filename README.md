@@ -47,12 +47,11 @@ The `.xlsx` sould contain the following columns:
 - **`warm`**: labled either 1 if the group of interst is described as warm or 0 if not
 - **`cold`**: labled either 1 if the group of interst is described as cold or 0 if not 
 
-All labeling shout be done with respect to the Stereotype Conent Model (Fiske, 2018).
+All labeling should be done with respect to the Stereotype Conent Model (Fiske, 2018).
 
 ### Environment Variables
 
 Setup the following environment variables in  a `.env` file at the root of the repository.
-
 
 **Hugging Face Access Token**
 
@@ -107,14 +106,6 @@ from stereotype_detector.config import DATA_PATH, MODEL_DIR_PATH
 
 data = load_data(DATA_PATH)
 user_name = get_huggingface_user_name()
-
-
-# --- Model 1 -----
-# Model: GBERT
-# Finetuning: Fixed
-# Heuristic Filtering: False
-# Focal loss: False
-# Layer Freezing: False
 
 BERT.finetune(
         model="deepset/gbert-base",
