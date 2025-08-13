@@ -1,7 +1,7 @@
 """
 This script finetunes all models from the following article:
 
-        Quistorp, P., Winn, T., Wolfrath, L., Dinsing, L., Taylor, T., & Gaikwad, R. (2024, August 13). 
+        Quistorp, P., Winn, T., Wolfrath, L., Dinsing, L., Taylor, T., & Gaikwad, R. (2025, August 13). 
         Detecting stereotypes (Unpublished manuscript). 
         University of Mannheim, Computational Analysis of Communication.
 """

@@ -144,6 +144,6 @@ However, since this may take up exhaustive computational resources consider spli
     Finding Frames With BERT: A Transformer-Based Approach to Generic News Frame Detection.
     Social Science Computer Review. https://doi.org/10.1177/08944393251338396
 
-    Quistorp, P., Winn, T., Wolfrath, L., Dinsing, L., Taylor, T., & Gaikwad, R. (2024, August 13). 
+    Quistorp, P., Winn, T., Wolfrath, L., Dinsing, L., Taylor, T., & Gaikwad, R. (2025, August 13). 
     Detecting stereotypes (Unpublished manuscript). 
     University of Mannheim, Computational Analysis of Communication.
