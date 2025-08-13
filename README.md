@@ -1,6 +1,6 @@
 # Stereotype Detector
 
-This Project classifies paragraphs from news articles as warm/cold/neutral according to the Stereotype Content Model (Fiske, 2018) by employing different BERT classifiert.
+This Project classifies paragraphs from news articles as warm/cold/neutral according to the Stereotype Content Model (Fiske, 2018) by employing different BERT classifiers.
 
 ## Setup
 ### Clone Repository
