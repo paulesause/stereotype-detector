@@ -1,6 +1,6 @@
-# Racism classifier
+# Stereotype Detector
 
-This Project classifies paragraphs news articles according to the stereotype content model employing a different BERT classifiert.
+This Project classifies paragraphs from news articles as warm/cold/neutral according to the Stereotype Content Model (Fiske, 2018) by employing different BERT classifiert.
 
 ## Setup
 ### Clone Repository
@@ -8,7 +8,7 @@ This Project classifies paragraphs news articles according to the stereotype con
 Clone the repository by running
 
 ```bash
-git clone https://github.com/paulesause/racism_classifier
+git clone https://github.com/paulesause/stereotype-detector
 ```
 
 ### Install Dependencies
@@ -31,7 +31,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-4. Install local racism_classifier package in editable mode
+4. Install local stereotype_detector package in editable mode
 
 ```
 pip install -e .
@@ -39,13 +39,15 @@ pip install -e .
 ### Data
 
 Create a `data` folder in the root of the repository. Place a `.xlsx` file with your labled data in this `data` folder.
-Then change the `DATA_PATH` variable in `racism_classifier/config.py` to the path of your `.xlsx` file.
+Then change the `DATA_PATH` variable in `stereotype_detector/config.py` to the path of your `.xlsx` file.
 
 The `.xlsx` sould contain the following columns:
 
 - **`text_block`**: Containing the new acticle paragraphs
 - **`warm`**: labled either 1 if the group of interst is described as warm or 0 if not
 - **`cold`**: labled either 1 if the group of interst is described as cold or 0 if not 
+
+All labeling shout be done with respect to the Stereotype Conent Model (Fiske, 2018).
 
 ### Environment Variables
 
@@ -67,7 +69,7 @@ HUGGING_FACE_USER_NAME=<your-huggingface-user-name>
 ## Usage
 ### Finetuning a BERT Classifier
 
-The primary method for finetuning is `finetune(...)`, located in `racism_classifier/finetuning/BERT.py`
+The primary method for finetuning is `finetune(...)`, located in `stereotype_detector/finetuning/BERT.py`
 
 This method handles end-to-end training of a BERT-based classifier using the Hugging Face Transformers ecosystem. It supports multiple evaluation strategies, integrates hyperparameter tuning via Optuna, and pushes the trained model to the Hugging Face Hub.
 
@@ -98,12 +100,10 @@ This method trains a transformer-based classification model with support for:
 
 ### Example Usage
 
-This script trains a BERT classifiers in different variants.
-
 ```python
-from racism_classifier.finetuning import BERT
-from racism_classifier.utils import load_data, get_huggingface_user_name
-from racism_classifier.config import DATA_PATH, MODEL_DIR_PATH
+from stereotype_detector.finetuning import BERT
+from stereotype_detector.utils import load_data, get_huggingface_user_name
+from stereotype_detector.config import DATA_PATH, MODEL_DIR_PATH
 
 data = load_data(DATA_PATH)
 user_name = get_huggingface_user_name()
@@ -123,206 +123,27 @@ BERT.finetune(
         hub_model_id=f"{user_name}/gbert-fixed-heur-f-foca-f-free-f",
         output_dir=f"{MODEL_DIR_PATH}/gbert-fixed-heur-f-foca-f-free-f"
 )
-
-# ---- Model 2 ---
-# Model: GBERT
-# Finetuning: Optimiztion with Optuna
-# Heuristic Filtering: False
-# Focal loss: False
-# Layer Freezing: False
-
-BERT.finetune(
-        model="deepset/gbert-base",
-        data=data,
-        hub_model_id=f"{user_name}/gbert-cv-heur-f-foca-f-free-f",
-        evaluation_mode="cv",
-        output_dir=f"{MODEL_DIR_PATH}/gbert-cv-heur-f-foca-f-free-f",
-        use_focal_loss=False,
-        heursitic_filtering=False,
-        enable_layer_freezing=False,
-)
-
-# --- Model 3 ---
-# Model: GBERT
-# Finetuning: Optimiztion with Optuna
-# Heuristic Filtering: True
-# Focal loss: False
-# Layer Freezing: False
-
-BERT.finetune(
-        model="deepset/gbert-base",
-        data=data,
-        hub_model_id=f"{user_name}/gbert-cv-heur-t-foca-f-free-f",
-        evaluation_mode="cv",
-        output_dir=f"{MODEL_DIR_PATH}/gbert-cv-heur-t-foca-f-free-f",
-        use_focal_loss=False,
-        heursitic_filtering=True,
-        enable_layer_freezing=False,
-)
-
-# --- Model 4 ----
-# Model: GBERT
-# Finetuning: Optimiztion with Optuna
-# Heuristic Filtering: True
-# Focal loss: True
-# Layer Freezing: False
-
-BERT.finetune(
-        model="deepset/gbert-base",
-        data=data,
-        hub_model_id=f"{user_name}/gbert-cv-heur-t-foca-t-free-f",
-        evaluation_mode="cv",
-        output_dir=f"{MODEL_DIR_PATH}/gbert-cv-heur-t-foca-t-free-f",
-        use_focal_loss=True,
-        heursitic_filtering=True,
-        enable_layer_freezing=False,
-)
-
-# --- Model 5 ----
-# Model: GBERT
-# Finetuning: Optimiztion with Optuna
-# Heuristic Filtering: False
-# Focal loss: True
-# Layer Freezing: False
-
-BERT.finetune(
-        model="deepset/gbert-base",
-        data=data,
-        hub_model_id=f"{user_name}/gbert-cv-heur-f-foca-t-free-f",
-        evaluation_mode="cv",
-        output_dir=f"{MODEL_DIR_PATH}/gbert-cv-heur-f-foca-t-free-f",
-        use_focal_loss=True,
-        heursitic_filtering=False,
-        enable_layer_freezing=False,
-)
-
-# --- Model 6 ----
-# Model: GBERT
-# Finetuning: Optimiztion with Optuna
-# Heuristic Filtering: False
-# Focal loss: True
-# Layer Freezing: True
-
-BERT.finetune(
-        model="deepset/gbert-base",
-        data=data,
-        hub_model_id=f"{user_name}/gbert-cv-heur-f-foca-t-free-t",
-        evaluation_mode="cv",
-        output_dir=f"{MODEL_DIR_PATH}/gbert-cv-heur-f-foca-t-free-t",
-        use_focal_loss=True,
-        heursitic_filtering=False,
-        enable_layer_freezing=True,
-)
-
-# --- Model 7 ----
-# Model: GBERT
-# Finetuning: Optimiztion with Optuna
-# Heuristic Filtering: False
-# Focal loss: False
-# Layer Freezing: True
-
-BERT.finetune(
-        model="deepset/gbert-base",
-        data=data,
-        hub_model_id=f"{user_name}/gbert-cv-heur-f-foca-f-free-t",
-        evaluation_mode="cv",
-        output_dir=f"{MODEL_DIR_PATH}/gbert-cv-heur-f-foca-f-free-t",
-        use_focal_loss=False,
-        heursitic_filtering=False,
-        enable_layer_freezing=True,
-)
-
-
-# --- Model 8 ---
-# Model: BERT base multilingual
-# Finetuning: Fixed
-# Heuristic Filtering: False
-# Focal loss: False
-# Layer Freezing: False
-
-BERT.finetune(
-        model="bert-base-multilingual-cased",
-        data=data,
-        use_default_hyperparameters=True,
-        hub_model_id=f"{user_name}/gbert-fixed-heur-f-foca-f-free-f",
-        output_dir=f"{MODEL_DIR_PATH}/gbert-fixed-heur-f-foca-f-free-f"
-)
-
-# --- Model 9 ---
-# Model: BERT base multilingual
-# Finetuning: Optimization with Optuna
-# Heuristic Filtering: False
-# Focal loss: False
-# Layer Freezing: False
-
-BERT.finetune(
-        model="bert-base-multilingual-cased",
-        data=data,
-        hub_model_id=f"{user_name}/multi-cv-heur-f-foca-f-free-f",
-        evaluation_mode="cv",
-        output_dir=f"{MODEL_DIR_PATH}/multi-cv-heur-f-foca-f-free-f",
-        use_focal_loss=False,
-        heursitic_filtering=False,
-        enable_layer_freezing=False,
-)
-
-# ---- Model 10 ----
-# Model: BERT base multilingual
-# Finetuning: Optimization with Optuna
-# Heuristic Filtering: False
-# Focal loss: False
-# Layer Freezing: True
-
-BERT.finetune(
-        model="bert-base-multilingual-cased",
-        data=data,
-        hub_model_id=f"{user_name}/multi-cv-heur-f-foca-f-free-t",
-        evaluation_mode="cv",
-        output_dir=f"{MODEL_DIR_PATH}/multi-cv-heur-f-foca-f-free-t",
-        use_focal_loss=False,
-        heursitic_filtering=False,
-        enable_layer_freezing=True,
-)
-
-# --- Model 11 ---
-# Model: BERT base multilingual
-# Finetuning: Optimization with Optuna
-# Heuristic Filtering: False
-# Focal loss: True
-# Layer Freezing: True
-
-BERT.finetune(
-        model="bert-base-multilingual-cased",
-        data=data,
-        hub_model_id=f"{user_name}/multi-cv-heur-f-foca-t-free-t",
-        evaluation_mode="cv",
-        output_dir=f"{MODEL_DIR_PATH}/multi-cv-heur-f-foca-t-free-t",
-        use_focal_loss=True,
-        heursitic_filtering=False,
-        enable_layer_freezing=True,
-)
-
-# --- Model 12 ---
-# Model: BERT base multilingual
-# Finetuning: Optimization with Optuna
-# Heuristic Filtering: False
-# Focal loss: True
-# Layer Freezing: False
-
-BERT.finetune(
-        model="bert-base-multilingual-cased",
-        data=data,
-        hub_model_id=f"{user_name}/multi-cv-heur-f-foca-t-free-f",
-        evaluation_mode="cv",
-        output_dir=f"{MODEL_DIR_PATH}/multi-cv-heur-f-foca-t-free-f",
-        use_focal_loss=True,
-        heursitic_filtering=False,
-        enable_layer_freezing=False,
-)
 ```
 
+### Scripts
+
+All models mentioned in Quistorp et al. (2025) can be trained by running:
+
+```bash
+python3 scripts/finetune.py
+```
+However, since this may take up exhaustive computational resources consider splitting it in different parts.
+
 ## References
+   
+    Fiske, S. T. (2018). Stereotype Content: 
+    Warmth and Competence Endure. Current Directions in Psychological Science,  
+    27(2), 67–73. https://doi.org/10.1177/0963721417738825
 
     Jumle, V., Makhortykh, M., Sydorova, M., & Vziatysheva, V. (2025).
     Finding Frames With BERT: A Transformer-Based Approach to Generic News Frame Detection.
     Social Science Computer Review. https://doi.org/10.1177/08944393251338396
+
+    Quistorp, P., Winn, T., Wolfrath, L., Dinsing, L., Taylor, T., & Gaikwad, R. (2024, August 13). 
+    Detecting stereotypes (Unpublished manuscript). 
+    University of Mannheim, Computational Analysis of Communication.
