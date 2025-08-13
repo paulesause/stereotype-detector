@@ -145,5 +145,5 @@ However, since this may take up exhaustive computational resources consider spli
     Social Science Computer Review. https://doi.org/10.1177/08944393251338396
 
     Quistorp, P., Winn, T., Wolfrath, L., Dinsing, L., Taylor, T., & Gaikwad, R. (2025, August 13). 
-    Detecting stereotypes (Unpublished manuscript). 
+    Stereotype Detection in Text: An Exploration Using BERT-based Models (Unpublished manuscript). 
     University of Mannheim, Computational Analysis of Communication.
