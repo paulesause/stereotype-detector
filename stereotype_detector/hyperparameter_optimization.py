@@ -1,5 +1,4 @@
 from transformers import (
-    Trainer,
     TrainingArguments,
     AutoModelForSequenceClassification,
     AutoConfig,
